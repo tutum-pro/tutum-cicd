@@ -1,0 +1,67 @@
+---
+# Ansible Playbook: Uninstall Tutum Engine and PostgreSQL
+#
+# Usage:
+#   ansible-playbook -i inventory uninstall-tutum-engine.yml
+#
+# Variables:
+#   remove_data: false (set to true to remove all data)
+
+- name: Uninstall Tutum Engine and PostgreSQL
+  hosts: all
+  become: true
+  vars:
+    _remove_data: "{{ remove_data | default(false) }}"
+    _tutum_data_dir: "{{ tutum_data_dir | default('/var/lib/tutum') }}"
+    _tutum_config_dir: "{{ tutum_config_dir | default('/etc/tutum') }}"
+    _docker_network: "{{ docker_network | default('tutum-network') }}"
+
+  tasks:
+    - name: Stop Tutum Engine container
+      ansible.builtin.command: docker stop tutum-engine
+      failed_when: false
+      changed_when: true
+
+    - name: Remove Tutum Engine container
+      ansible.builtin.command: docker rm tutum-engine
+      failed_when: false
+      changed_when: true
+
+    - name: Stop PostgreSQL container
+      ansible.builtin.command: docker stop tutum-postgres
+      failed_when: false
+      changed_when: true
+
+    - name: Remove PostgreSQL container
+      ansible.builtin.command: docker rm tutum-postgres
+      failed_when: false
+      changed_when: true
+
+    - name: Remove Docker network
+      ansible.builtin.command: docker network rm {{ _docker_network }}
+      failed_when: false
+      changed_when: true
+
+    - name: Remove data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ _tutum_data_dir }}"
+        - "{{ _tutum_config_dir }}"
+      when: _remove_data | bool
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: |
+          Tutum Engine and PostgreSQL have been removed.
+
+          {% if _remove_data | bool %}
+          Data directories have been removed:
+            - {{ _tutum_data_dir }}
+            - {{ _tutum_config_dir }}
+          {% else %}
+          Data directories preserved (use -e remove_data=true to delete):
+            - {{ _tutum_data_dir }}
+            - {{ _tutum_config_dir }}
+          {% endif %}

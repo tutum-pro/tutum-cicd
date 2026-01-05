@@ -1,0 +1,181 @@
+---
+# Ansible Playbook: Install Tutum Docker Volume Plugin
+#
+# Usage:
+#   ansible-playbook -i inventory install-plugin.yml
+#
+# Variables:
+#   plugin_name: tutumpro/tutum-csi-driver-docker
+#   plugin_version: 2.1.5
+#   tutum_engine_url: localhost:9090
+#   volume_dir: /var/lib/tutum/volumes
+#   log_level: info
+
+- name: Install Tutum Docker Volume Plugin
+  hosts: all
+  become: true
+  vars:
+    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
+    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
+    _tutum_engine_url: "{{ tutum_engine_url | default('localhost:9090') }}"
+    _volume_dir: "{{ volume_dir | default('/var/lib/tutum/volumes') }}"
+    _log_level: "{{ log_level | default('info') }}"
+    _plugin_temp_dir: "/tmp/tutum-plugin-{{ ansible_facts['date_time']['epoch'] }}"
+
+  tasks:
+    - name: Verify Docker is running
+      ansible.builtin.command: docker info
+      changed_when: false
+      register: docker_info
+      failed_when: docker_info.rc != 0
+
+    - name: Check if plugin is already installed
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' | grep -q "^{{ _plugin_name }}"
+        executable: /bin/bash
+      register: plugin_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Disable existing plugin
+      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}"
+      when: plugin_exists.rc == 0
+      failed_when: false
+      changed_when: true
+
+    - name: Remove existing plugin
+      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}"
+      when: plugin_exists.rc == 0
+      failed_when: false
+      changed_when: true
+
+    - name: Pull plugin image from registry
+      ansible.builtin.command: docker pull "{{ _plugin_full_name }}"
+      register: pull_result
+      changed_when: "'Downloaded' in pull_result.stdout or 'Pull complete' in pull_result.stdout"
+
+    - name: Create temporary directory for plugin
+      ansible.builtin.file:
+        path: "{{ _plugin_temp_dir }}/rootfs"
+        state: directory
+        mode: '0755'
+
+    - name: Create temporary container from plugin image
+      ansible.builtin.command: docker create --name tutum-plugin-temp "{{ _plugin_full_name }}"
+      register: container_create
+      changed_when: true
+
+    - name: Export container filesystem to rootfs
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker export tutum-plugin-temp | tar -x -C "{{ _plugin_temp_dir }}/rootfs"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Remove temporary container
+      ansible.builtin.command: docker rm tutum-plugin-temp
+      changed_when: true
+
+    - name: Create plugin config.json
+      ansible.builtin.copy:
+        dest: "{{ _plugin_temp_dir }}/config.json"
+        mode: '0644'
+        content: |
+          {
+            "description": "Tutum Certificate Volume Plugin for Docker",
+            "documentation": "https://github.com/tutum/tutum-platform",
+            "entrypoint": [
+              "/bin/tutum-csi-driver-docker",
+              "--tutum-engine-url", "{{ _tutum_engine_url }}",
+              "--mount-root", "/mnt/volumes",
+              "--log-level", "{{ _log_level }}"
+            ],
+            "network": {
+              "type": "host"
+            },
+            "interface": {
+              "types": ["docker.volumedriver/1.0"],
+              "socket": "tutum.sock"
+            },
+            "linux": {
+              "capabilities": ["CAP_SYS_ADMIN"],
+              "allowAllDevices": false,
+              "devices": null
+            },
+            "mounts": [
+              {
+                "name": "volumes",
+                "description": "Volume mount directory",
+                "source": "{{ _volume_dir }}",
+                "destination": "/mnt/volumes",
+                "type": "bind",
+                "options": ["rbind", "rshared"]
+              },
+              {
+                "name": "docker-socket",
+                "description": "Docker socket",
+                "source": "/run/docker/plugins",
+                "destination": "/run/docker/plugins",
+                "type": "bind",
+                "options": ["rbind"]
+              }
+            ],
+            "env": [
+              {
+                "name": "TUTUM_ENGINE_URL",
+                "description": "Tutum Engine gRPC URL",
+                "value": "{{ _tutum_engine_url }}"
+              },
+              {
+                "name": "LOG_LEVEL",
+                "description": "Log level (debug, info, warn, error)",
+                "value": "{{ _log_level }}"
+              }
+            ]
+          }
+
+    - name: Create volume directory
+      ansible.builtin.file:
+        path: "{{ _volume_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create Docker plugin
+      ansible.builtin.command:
+        cmd: docker plugin create "{{ _plugin_full_name }}" .
+        chdir: "{{ _plugin_temp_dir }}"
+      changed_when: true
+
+    - name: Enable Docker plugin
+      ansible.builtin.command: docker plugin enable "{{ _plugin_full_name }}"
+      changed_when: true
+
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ _plugin_temp_dir }}"
+        state: absent
+
+    - name: Verify plugin is installed and enabled
+      ansible.builtin.command: docker plugin ls
+      register: plugin_list
+      changed_when: false
+
+    - name: Display installation result
+      ansible.builtin.debug:
+        msg: |
+          Tutum Docker Volume Plugin installed successfully!
+
+          Plugin: {{ _plugin_full_name }}
+          Tutum Engine URL: {{ _tutum_engine_url }}
+          Volume Directory: {{ _volume_dir }}
+
+          Example usage:
+            docker volume create -d {{ _plugin_full_name }} \
+              --opt name=my-cert \
+              --opt group_id=my-group-uuid \
+              --opt namespace=my-namespace \
+              my-volume

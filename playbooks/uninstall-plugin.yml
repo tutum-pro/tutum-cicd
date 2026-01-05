@@ -1,0 +1,53 @@
+---
+# Ansible Playbook: Uninstall Tutum Docker Volume Plugin
+#
+# Usage:
+#   ansible-playbook -i inventory uninstall-plugin.yml
+
+- name: Uninstall Tutum Docker Volume Plugin
+  hosts: all
+  become: true
+  vars:
+    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
+    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
+    _remove_volumes: "{{ remove_volumes | default(false) }}"
+    _volume_dir: "{{ volume_dir | default('/var/lib/tutum/volumes') }}"
+
+  tasks:
+    - name: Check if plugin is installed
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' | grep -q "^{{ _plugin_name }}"
+        executable: /bin/bash
+      register: plugin_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Disable plugin
+      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}"
+      when: plugin_exists.rc == 0
+      failed_when: false
+      changed_when: true
+
+    - name: Remove plugin
+      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}"
+      when: plugin_exists.rc == 0
+      changed_when: true
+
+    - name: Remove volume directory (optional)
+      ansible.builtin.file:
+        path: "{{ _volume_dir }}"
+        state: absent
+      when: _remove_volumes | bool
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: "Tutum Docker Volume Plugin {{ _plugin_full_name }} has been removed."
+      when: plugin_exists.rc == 0
+
+    - name: Plugin not found
+      ansible.builtin.debug:
+        msg: "Plugin {{ _plugin_full_name }} was not installed."
+      when: plugin_exists.rc != 0

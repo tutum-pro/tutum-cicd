@@ -1,0 +1,318 @@
+---
+# Ansible Playbook: Install Tutum Engine with PostgreSQL
+#
+# Usage:
+#   ansible-playbook -i inventory install-tutum-engine.yml
+#
+# Variables:
+#   tutum_engine_version: 2.1.19
+#   postgres_version: 15-alpine
+#   db_name: tutum
+#   db_user: tutum
+#   db_password: tutum
+#   tutum_master_key: (generated if not provided)
+
+- name: Install Tutum Engine with PostgreSQL
+  hosts: all
+  become: true
+  vars:
+    # Versions
+    _tutum_engine_version: "{{ tutum_engine_version | default('2.1.19') }}"
+    _postgres_version: "{{ postgres_version | default('15-alpine') }}"
+
+    # Database configuration
+    _db_name: "{{ db_name | default('tutum') }}"
+    _db_user: "{{ db_user | default('tutum') }}"
+    _db_password: "{{ db_password | default('tutum') }}"
+    _db_host: "tutum-postgres"
+    _db_port: "{{ db_port | default('5432') }}"
+
+    # Tutum Engine configuration
+    _tutum_master_key: "{{ tutum_master_key | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
+    _tutum_jwt_secret: "{{ tutum_jwt_secret | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
+    _tutum_rest_port: "{{ tutum_rest_port | default('8080') }}"
+    _tutum_grpc_port: "{{ tutum_grpc_port | default('9090') }}"
+    _tutum_log_level: "{{ tutum_log_level | default('info') }}"
+
+    # Directories
+    _tutum_data_dir: "{{ tutum_data_dir | default('/var/lib/tutum') }}"
+    _tutum_config_dir: "{{ tutum_config_dir | default('/etc/tutum') }}"
+
+    # Docker network
+    _docker_network: "{{ docker_network | default('tutum-network') }}"
+
+  tasks:
+    # ==================== Prerequisites ====================
+    - name: Verify Docker is running
+      ansible.builtin.command: docker info
+      changed_when: false
+      register: docker_info
+      failed_when: docker_info.rc != 0
+
+    - name: Create Tutum directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ _tutum_data_dir }}"
+        - "{{ _tutum_data_dir }}/postgres"
+        - "{{ _tutum_config_dir }}"
+        - "{{ _tutum_config_dir }}/migrations"
+
+    # ==================== Docker Network ====================
+    - name: Create Docker network
+      ansible.builtin.command: docker network create {{ _docker_network }}
+      register: network_create
+      changed_when: network_create.rc == 0
+      failed_when: network_create.rc != 0 and 'already exists' not in network_create.stderr
+
+    # ==================== PostgreSQL ====================
+    - name: Check if PostgreSQL container exists
+      ansible.builtin.command: docker ps -a --filter name=tutum-postgres --format '{{ '{{' }}.Names{{ '}}' }}'
+      register: postgres_exists
+      changed_when: false
+
+    - name: Stop existing PostgreSQL container
+      ansible.builtin.command: docker stop tutum-postgres
+      when: "'tutum-postgres' in postgres_exists.stdout"
+      failed_when: false
+      changed_when: true
+
+    - name: Remove existing PostgreSQL container
+      ansible.builtin.command: docker rm tutum-postgres
+      when: "'tutum-postgres' in postgres_exists.stdout"
+      failed_when: false
+      changed_when: true
+
+    - name: Pull PostgreSQL image
+      ansible.builtin.command: docker pull postgres:{{ _postgres_version }}
+      register: pull_result
+      changed_when: "'Downloaded' in pull_result.stdout or 'Pull complete' in pull_result.stdout"
+
+    - name: Start PostgreSQL container
+      ansible.builtin.command: >
+        docker run -d
+        --name tutum-postgres
+        --network {{ _docker_network }}
+        -e POSTGRES_DB={{ _db_name }}
+        -e POSTGRES_USER={{ _db_user }}
+        -e POSTGRES_PASSWORD={{ _db_password }}
+        -e POSTGRES_INITDB_ARGS="--encoding=UTF8"
+        -v {{ _tutum_data_dir }}/postgres:/var/lib/postgresql/data
+        -p {{ _db_port }}:5432
+        --health-cmd="pg_isready -U {{ _db_user }}"
+        --health-interval=10s
+        --health-timeout=5s
+        --health-retries=5
+        --restart unless-stopped
+        postgres:{{ _postgres_version }}
+      changed_when: true
+
+    - name: Wait for PostgreSQL to be healthy
+      ansible.builtin.command: docker inspect --format='{{ '{{' }}.State.Health.Status{{ '}}' }}' tutum-postgres
+      register: pg_health
+      until: pg_health.stdout == 'healthy'
+      retries: 30
+      delay: 2
+      changed_when: false
+
+    # ==================== Database Schema & Migrations ====================
+    - name: Copy schema file
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/migrations/schema.sql"
+        dest: "{{ _tutum_config_dir }}/migrations/schema.sql"
+        mode: '0644'
+
+    - name: Copy migration files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/migrations/"
+        dest: "{{ _tutum_config_dir }}/migrations/"
+        mode: '0644'
+
+    - name: Create migrations tracking table
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -c "
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+              id SERIAL PRIMARY KEY,
+              version VARCHAR(255) NOT NULL UNIQUE,
+              applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+              description TEXT
+            );
+          "
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Check if schema is applied
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -t -c "
+            SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'certificates';
+          "
+        executable: /bin/bash
+      register: schema_check
+      changed_when: false
+
+    - name: Apply database schema
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker exec -i tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} < {{ _tutum_config_dir }}/migrations/schema.sql
+        executable: /bin/bash
+      when: schema_check.stdout | trim | int == 0
+      register: schema_result
+      changed_when: true
+
+    - name: Record schema migration
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -c "
+            INSERT INTO schema_migrations (version, description)
+            VALUES ('000_schema', 'Initial database schema')
+            ON CONFLICT (version) DO NOTHING;
+          "
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Find migration files
+      ansible.builtin.find:
+        paths: "{{ _tutum_config_dir }}/migrations"
+        patterns: "[0-9][0-9][0-9]_*.sql"
+        excludes: "*.template"
+      register: migration_files
+
+    - name: Apply migrations in order
+      vars:
+        migration_version: "{{ item.path | basename | regex_replace('\\.sql$', '') }}"
+        migration_name: "{{ item.path | basename }}"
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          # Check if migration is already applied
+          APPLIED=$(docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -t -c \
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = '{{ migration_version }}';" | tr -d ' ')
+
+          if [ "$APPLIED" = "0" ]; then
+            echo "Applying migration: {{ migration_name }}"
+            docker exec -i tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} < {{ item.path }}
+            docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -c \
+              "INSERT INTO schema_migrations (version, description) \
+               VALUES ('{{ migration_version }}', 'Migration {{ migration_name }}');"
+            echo "CHANGED"
+          else
+            echo "Migration already applied: {{ migration_name }}"
+          fi
+        executable: /bin/bash
+      loop: "{{ migration_files.files | sort(attribute='path') }}"
+      register: migration_result
+      changed_when: "'CHANGED' in migration_result.stdout"
+
+    # ==================== Tutum Engine ====================
+    - name: Check if Tutum Engine container exists
+      ansible.builtin.command: docker ps -a --filter name=tutum-engine --format '{{ '{{' }}.Names{{ '}}' }}'
+      register: engine_exists
+      changed_when: false
+
+    - name: Stop existing Tutum Engine container
+      ansible.builtin.command: docker stop tutum-engine
+      when: "'tutum-engine' in engine_exists.stdout"
+      failed_when: false
+      changed_when: true
+
+    - name: Remove existing Tutum Engine container
+      ansible.builtin.command: docker rm tutum-engine
+      when: "'tutum-engine' in engine_exists.stdout"
+      failed_when: false
+      changed_when: true
+
+    - name: Pull Tutum Engine image
+      ansible.builtin.command: docker pull tutumpro/tutum-engine:{{ _tutum_engine_version }}
+      register: pull_engine
+      changed_when: "'Downloaded' in pull_engine.stdout or 'Pull complete' in pull_engine.stdout"
+
+    - name: Start Tutum Engine container
+      ansible.builtin.command: >
+        docker run -d
+        --name tutum-engine
+        --network {{ _docker_network }}
+        -e DATABASE_URL=postgres://{{ _db_user }}:{{ _db_password }}@{{ _db_host }}:{{ _db_port }}/{{ _db_name }}?sslmode=disable
+        -e DATABASE_MAX_OPEN_CONNS=25
+        -e DATABASE_MAX_IDLE_CONNS=5
+        -e DATABASE_CONN_MAX_LIFETIME=5m
+        -e TUTUM_MASTER_KEY={{ _tutum_master_key }}
+        -e TUTUM_REST_ADDR=:{{ _tutum_rest_port }}
+        -e TUTUM_GRPC_ADDR=:{{ _tutum_grpc_port }}
+        -e TUTUM_LOG_LEVEL={{ _tutum_log_level }}
+        -e TUTUM_LOG_FORMAT=console
+        -e TUTUM_JWT_SECRET={{ _tutum_jwt_secret }}
+        -e TUTUM_JWT_EXPIRY=24h
+        -e TUTUM_CERT_EXPIRY_WARNING_DAYS=30
+        -e CREATE_NOT_EXISTING_OBJ=true
+        -e K8S_POD_RESTART_ENABLED=false
+        -p {{ _tutum_rest_port }}:8080
+        -p {{ _tutum_grpc_port }}:9090
+        --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"
+        --health-interval=30s
+        --health-timeout=3s
+        --health-start-period=10s
+        --health-retries=3
+        --restart unless-stopped
+        tutumpro/tutum-engine:{{ _tutum_engine_version }}
+      changed_when: true
+
+    - name: Wait for Tutum Engine to be healthy
+      ansible.builtin.command: docker inspect --format='{{ '{{' }}.State.Health.Status{{ '}}' }}' tutum-engine
+      register: engine_health
+      until: engine_health.stdout == 'healthy'
+      retries: 30
+      delay: 5
+      changed_when: false
+
+    # ==================== Verification ====================
+    - name: Verify Tutum Engine REST API
+      ansible.builtin.uri:
+        url: "http://localhost:{{ _tutum_rest_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 5
+      delay: 3
+      until: health_check.status == 200
+
+    - name: Get migration status
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -c "SELECT version, applied_at FROM schema_migrations ORDER BY applied_at;"
+        executable: /bin/bash
+      register: migration_status
+      changed_when: false
+
+    - name: Display installation result
+      ansible.builtin.debug:
+        msg: |
+          Tutum Engine installed successfully!
+
+          Services:
+            - PostgreSQL: localhost:{{ _db_port }}
+            - Tutum Engine REST API: http://localhost:{{ _tutum_rest_port }}
+            - Tutum Engine gRPC API: localhost:{{ _tutum_grpc_port }}
+
+          Database:
+            - Host: {{ _db_host }}
+            - Database: {{ _db_name }}
+            - User: {{ _db_user }}
+
+          IMPORTANT - Save these secrets:
+            - TUTUM_MASTER_KEY: {{ _tutum_master_key }}
+            - TUTUM_JWT_SECRET: {{ _tutum_jwt_secret }}
+
+          Applied Migrations:
+          {{ migration_status.stdout }}
+
+          Test the installation:
+            curl http://localhost:{{ _tutum_rest_port }}/health

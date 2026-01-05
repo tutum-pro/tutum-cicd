@@ -1,0 +1,58 @@
+# Tutum Platform - Ansible Inventory
+#
+# Copy this file to 'docker' and modify to match your environment
+# Usage: cd tutum-cicd && ansible-playbook playbooks/install-tutum-engine.yml
+
+[docker_hosts]
+# Uncomment and modify:
+# docker-server ansible_host=192.168.1.100
+
+[docker_hosts:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+# ansible_become_password=your_sudo_password
+
+# ===========================================
+# Override default variables here
+# ===========================================
+
+# Tutum Engine
+# tutum_engine_version=2.1.19
+# tutum_rest_port=8080
+# tutum_grpc_port=9090
+# tutum_log_level=info
+
+# Database
+# db_name=tutum
+# db_user=tutum
+# db_password=secure_password_here
+
+# CSI Driver Plugin
+# plugin_version=2.1.5
+# tutum_engine_url=localhost:9090
+# volume_dir=/var/lib/tutum/volumes
+
+# ===========================================
+# Production Environment
+# ===========================================
+[production]
+# prod-1 ansible_host=10.0.1.10
+# prod-2 ansible_host=10.0.1.11
+
+[production:vars]
+tutum_log_level=warn
+log_level=warn
+# IMPORTANT: Set secure keys for production!
+# tutum_master_key=YOUR_PRODUCTION_MASTER_KEY_32_BYTES
+# tutum_jwt_secret=YOUR_PRODUCTION_JWT_SECRET
+# db_password=YOUR_SECURE_DB_PASSWORD
+
+# ===========================================
+# Staging Environment
+# ===========================================
+[staging]
+# staging-1 ansible_host=10.0.2.10
+
+[staging:vars]
+tutum_log_level=debug
+log_level=debug

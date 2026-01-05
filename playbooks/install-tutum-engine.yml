@@ -37,6 +37,7 @@
     # Directories
     _tutum_data_dir: "{{ tutum_data_dir | default('/var/lib/tutum') }}"
     _tutum_config_dir: "{{ tutum_config_dir | default('/etc/tutum') }}"
+    _migrations_src_dir: "{{ playbook_dir }}/../files/migrations"
 
     # Docker network
     _docker_network: "{{ docker_network | default('tutum-network') }}"
@@ -120,13 +121,13 @@
     # ==================== Database Schema & Migrations ====================
     - name: Copy schema file
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/migrations/schema.sql"
+        src: "{{ _migrations_src_dir }}/schema.sql"
         dest: "{{ _tutum_config_dir }}/migrations/schema.sql"
         mode: '0644'
 
     - name: Copy migration files
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/migrations/"
+        src: "{{ _migrations_src_dir }}/"
         dest: "{{ _tutum_config_dir }}/migrations/"
         mode: '0644'
 

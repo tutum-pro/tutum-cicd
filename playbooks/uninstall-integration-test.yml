@@ -50,7 +50,7 @@
       ansible.builtin.uri:
         url: "{{ _tutum_rest_url }}/health"
         method: GET
-        status_code: [200, 000]
+        status_code: [200]
       register: health_check
       failed_when: false
 

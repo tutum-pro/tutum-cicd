@@ -1,0 +1,20 @@
+# Ansible
+*.retry
+.ansible_cache/
+logs/*.log
+
+# Inventory (may contain secrets)
+inventory/docker
+
+# Vault
+*.vault
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -12,16 +12,16 @@
   hosts: all
   become: true
   vars:
-    # Tutum Engine configuration
+    # All defaults defined in inventory/group_vars/all.yml
     _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
-    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port | default('8080') }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port }}"
 
-    # Test data - must match integration-test.yml values
-    _test_namespace: "{{ test_namespace | default('n1') }}"
-    _test_group: "{{ test_group | default('g1') }}"
-    _test_cert_name: "{{ test_cert_name | default('test-cert') }}"
-    _test_container_name: "{{ test_container_name | default('tutum-test-busybox') }}"
-    _test_volume_name: "{{ test_volume_name | default('tutum-test-volume') }}"
+    # Test data - defined in inventory/group_vars/all.yml
+    _test_namespace: "{{ test_namespace }}"
+    _test_group: "{{ test_group }}"
+    _test_cert_name: "{{ test_cert_name }}"
+    _test_container_name: "{{ test_container_name }}"
+    _test_volume_name: "{{ test_volume_name }}"
 
     # Cleanup options
     _remove_namespace: "{{ remove_namespace | default(false) }}"

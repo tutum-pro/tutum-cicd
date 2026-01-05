@@ -13,11 +13,15 @@
   hosts: all
   become: true
   vars:
-    _cli_name: "{{ cli_name | default('tutumpro/tutum-admin-cli') }}"
-    _cli_version: "{{ cli_version | default('0.1.76') }}"
+    # CI/CD version for labeling
+    _cicd_version: "{{ cicd_version }}"
+
+    # All versions and defaults defined in inventory/group_vars/all.yml
+    _cli_name: "{{ cli_image }}"
+    _cli_version: "{{ cli_version }}"
     _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
-    _cli_container_name: "{{ cli_container_name | default('tutum-admin-cli') }}"
-    _tutum_engine_url: "{{ tutum_engine_url | default('tutum-engine:9090') }}"
+    _cli_container_name: "{{ cli_container_name }}"
+    _tutum_engine_url: "{{ tutum_engine_url }}"
 
   tasks:
     - name: Verify Docker is running
@@ -48,6 +52,9 @@
             --name {{ _cli_container_name }} \
             --network host \
             --restart unless-stopped \
+            --label tutum-cicd.version={{ _cicd_version }} \
+            --label tutum-cicd.component=cli \
+            --label tutum-cicd.image={{ _cli_full_name }} \
             -e TUTUM_ENGINE_URL={{ _tutum_engine_url }} \
             -e TUTUM_ENGINE_REST_URL=http://{{ _tutum_engine_url.split(':')[0] }}:8080 \
             -e TUTUM_USE_TLS=false \

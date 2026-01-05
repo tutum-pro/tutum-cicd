@@ -12,10 +12,11 @@
   hosts: all
   become: true
   vars:
-    _cli_name: "{{ cli_name | default('tutumpro/tutum-admin-cli') }}"
-    _cli_version: "{{ cli_version | default('0.1.76') }}"
+    # All versions and defaults defined in inventory/group_vars/all.yml
+    _cli_name: "{{ cli_image }}"
+    _cli_version: "{{ cli_version }}"
     _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
-    _cli_container_name: "{{ cli_container_name | default('tutum-admin-cli') }}"
+    _cli_container_name: "{{ cli_container_name }}"
     _remove_image: "{{ remove_image | default(false) }}"
 
   tasks:

@@ -15,12 +15,17 @@
   hosts: all
   become: true
   vars:
-    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
-    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    # CI/CD version for labeling
+    _cicd_version: "{{ cicd_version }}"
+
+    # All versions and defaults defined in inventory/group_vars/all.yml
+    _plugin_name: "{{ plugin_image }}"
+    _plugin_version: "{{ plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
-    _tutum_engine_url: "{{ tutum_engine_url | default('tutum-engine:9090') }}"
-    _volume_dir: "{{ volume_dir | default('/var/lib/tutum/volumes') }}"
-    _log_level: "{{ log_level | default('info') }}"
+    # Plugin runs inside Docker network, needs internal URL
+    _tutum_engine_url: "{{ tutum_engine_internal_url }}"
+    _volume_dir: "{{ volume_dir }}"
+    _log_level: "{{ log_level }}"
     _plugin_temp_dir: "/tmp/tutum-plugin-{{ ansible_facts['date_time']['epoch'] }}"
 
   tasks:
@@ -134,6 +139,11 @@
                 "name": "LOG_LEVEL",
                 "description": "Log level (debug, info, warn, error)",
                 "value": "{{ _log_level }}"
+              },
+              {
+                "name": "TUTUM_CICD_VERSION",
+                "description": "Tutum CI/CD version that deployed this plugin",
+                "value": "{{ _cicd_version }}"
               }
             ]
           }

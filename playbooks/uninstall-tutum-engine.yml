@@ -11,10 +11,11 @@
   hosts: all
   become: true
   vars:
+    # All defaults defined in inventory/group_vars/all.yml
     _remove_data: "{{ remove_data | default(false) }}"
-    _tutum_data_dir: "{{ tutum_data_dir | default('/var/lib/tutum') }}"
-    _tutum_config_dir: "{{ tutum_config_dir | default('/etc/tutum') }}"
-    _docker_network: "{{ docker_network | default('tutum-network') }}"
+    _tutum_data_dir: "{{ tutum_data_dir }}"
+    _tutum_config_dir: "{{ tutum_config_dir }}"
+    _docker_network: "{{ docker_network }}"
 
   tasks:
     - name: Stop Tutum Engine container

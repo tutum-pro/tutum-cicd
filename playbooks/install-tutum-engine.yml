@@ -16,31 +16,34 @@
   hosts: all
   become: true
   vars:
-    # Versions
-    _tutum_engine_version: "{{ tutum_engine_version | default('3.3.1') }}"
-    _postgres_version: "{{ postgres_version | default('15-alpine') }}"
+    # CI/CD version for labeling
+    _cicd_version: "{{ cicd_version }}"
 
-    # Database configuration
-    _db_name: "{{ db_name | default('tutum') }}"
-    _db_user: "{{ db_user | default('tutum') }}"
-    _db_password: "{{ db_password | default('tutum') }}"
-    _db_host: "tutum-postgres"
-    _db_port: "{{ db_port | default('5432') }}"
+    # Versions - defined in inventory/group_vars/all.yml
+    _tutum_engine_version: "{{ tutum_engine_version }}"
+    _postgres_version: "{{ postgres_version }}"
+
+    # Database configuration - defined in inventory/group_vars/all.yml
+    _db_name: "{{ db_name }}"
+    _db_user: "{{ db_user }}"
+    _db_password: "{{ db_password }}"
+    _db_host: "{{ postgres_container_name }}"
+    _db_port: "{{ db_port }}"
 
     # Tutum Engine configuration
     _tutum_master_key: "{{ tutum_master_key | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
     _tutum_jwt_secret: "{{ tutum_jwt_secret | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
-    _tutum_rest_port: "{{ tutum_rest_port | default('8080') }}"
-    _tutum_grpc_port: "{{ tutum_grpc_port | default('9090') }}"
-    _tutum_log_level: "{{ tutum_log_level | default('info') }}"
+    _tutum_rest_port: "{{ tutum_rest_port }}"
+    _tutum_grpc_port: "{{ tutum_grpc_port }}"
+    _tutum_log_level: "{{ log_level }}"
 
-    # Directories
-    _tutum_data_dir: "{{ tutum_data_dir | default('/var/lib/tutum') }}"
-    _tutum_config_dir: "{{ tutum_config_dir | default('/etc/tutum') }}"
+    # Directories - defined in inventory/group_vars/all.yml
+    _tutum_data_dir: "{{ tutum_data_dir }}"
+    _tutum_config_dir: "{{ tutum_config_dir }}"
     _migrations_src_dir: "{{ playbook_dir }}/../files/migrations"
 
-    # Docker network
-    _docker_network: "{{ docker_network | default('tutum-network') }}"
+    # Docker network - defined in inventory/group_vars/all.yml
+    _docker_network: "{{ docker_network }}"
 
   tasks:
     # ==================== Prerequisites ====================
@@ -96,6 +99,9 @@
         docker run -d
         --name tutum-postgres
         --network {{ _docker_network }}
+        --label tutum-cicd.version={{ _cicd_version }}
+        --label tutum-cicd.component=postgres
+        --label tutum-cicd.image=postgres:{{ _postgres_version }}
         -e POSTGRES_DB={{ _db_name }}
         -e POSTGRES_USER={{ _db_user }}
         -e POSTGRES_PASSWORD={{ _db_password }}
@@ -235,11 +241,20 @@
       register: pull_engine
       changed_when: "'Downloaded' in pull_engine.stdout or 'Pull complete' in pull_engine.stdout"
 
+    - name: Get Docker socket group ID
+      ansible.builtin.shell: stat -c '%g' /var/run/docker.sock
+      register: docker_socket_gid
+      changed_when: false
+
     - name: Start Tutum Engine container
       ansible.builtin.command: >
         docker run -d
         --name tutum-engine
         --network {{ _docker_network }}
+        --label tutum-cicd.version={{ _cicd_version }}
+        --label tutum-cicd.component=engine
+        --label tutum-cicd.image=tutumpro/tutum-engine:{{ _tutum_engine_version }}
+        --group-add {{ docker_socket_gid.stdout | trim }}
         -e DATABASE_URL=postgres://{{ _db_user }}:{{ _db_password }}@{{ _db_host }}:{{ _db_port }}/{{ _db_name }}?sslmode=disable
         -e DATABASE_MAX_OPEN_CONNS=25
         -e DATABASE_MAX_IDLE_CONNS=5
@@ -253,7 +268,7 @@
         -e TUTUM_JWT_EXPIRY=24h
         -e TUTUM_CERT_EXPIRY_WARNING_DAYS=30
         -e CREATE_NOT_EXISTING_OBJ=true
-        -e K8S_POD_RESTART_ENABLED=false
+        -v /var/run/docker.sock:/var/run/docker.sock:ro
         -p {{ _tutum_rest_port }}:8080
         -p {{ _tutum_grpc_port }}:9090
         --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"

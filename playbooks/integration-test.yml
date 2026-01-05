@@ -22,28 +22,28 @@
   hosts: all
   become: true
   vars:
-    # Tutum Engine configuration - uses tutum_engine_url from inventory
+    # All versions and defaults defined in inventory/group_vars/all.yml
     # tutum_engine_url format: host:grpc_port (e.g., docker:9090)
     _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
     _tutum_engine_grpc_port: "{{ tutum_engine_url.split(':')[1] }}"
-    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port | default('8080') }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port }}"
     _tutum_grpc_url: "{{ tutum_engine_url }}"
 
-    # Plugin configuration - uses variables from inventory/group_vars
-    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
-    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    # Plugin configuration
+    _plugin_name: "{{ plugin_image }}"
+    _plugin_version: "{{ plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
 
     # Test data
-    _test_namespace: "{{ test_namespace | default('n1') }}"
-    _test_group: "{{ test_group | default('g1') }}"
-    _test_cert_name: "{{ test_cert_name | default('test-cert') }}"
+    _test_namespace: "{{ test_namespace }}"
+    _test_group: "{{ test_group }}"
+    _test_cert_name: "{{ test_cert_name }}"
     _test_secret_data: "{{ test_secret_data | default('TOP_SECRET') }}"
-    _test_container_name: "{{ test_container_name | default('tutum-test-busybox') }}"
-    _test_volume_name: "{{ test_volume_name | default('tutum-test-volume') }}"
+    _test_container_name: "{{ test_container_name }}"
+    _test_volume_name: "{{ test_volume_name }}"
 
     # Cleanup flag
-    _cleanup_after_test: "{{ cleanup_after_test | default(true) }}"
+    _cleanup_after_test: "{{ cleanup_after_test }}"
 
   tasks:
     # ==================== Health Check ====================

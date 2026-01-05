@@ -8,11 +8,12 @@
   hosts: all
   become: true
   vars:
-    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
-    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    # All versions and defaults defined in inventory/group_vars/all.yml
+    _plugin_name: "{{ plugin_image }}"
+    _plugin_version: "{{ plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
     _remove_volumes: "{{ remove_volumes | default(false) }}"
-    _volume_dir: "{{ volume_dir | default('/var/lib/tutum/volumes') }}"
+    _volume_dir: "{{ volume_dir }}"
 
   tasks:
     - name: Check if plugin is installed
@@ -25,15 +26,33 @@
       changed_when: false
       failed_when: false
 
+    - name: Find volumes using the plugin
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker volume ls --filter driver={{ _plugin_full_name }} --format '{{ '{{' }}.Name{{ '}}' }}'
+        executable: /bin/bash
+      register: plugin_volumes
+      changed_when: false
+      failed_when: false
+
+    - name: Remove volumes using the plugin
+      ansible.builtin.command: docker volume rm -f "{{ item }}"
+      loop: "{{ plugin_volumes.stdout_lines | default([]) }}"
+      when: plugin_volumes.stdout_lines | default([]) | length > 0
+      failed_when: false
+      changed_when: true
+
     - name: Disable plugin
-      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}"
+      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}" -f
       when: plugin_exists.rc == 0
       failed_when: false
       changed_when: true
 
     - name: Remove plugin
-      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}"
+      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}" -f
       when: plugin_exists.rc == 0
+      failed_when: false
       changed_when: true
 
     - name: Remove volume directory (optional)

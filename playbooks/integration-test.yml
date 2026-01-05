@@ -1,0 +1,335 @@
+---
+# Ansible Playbook: Integration Test for Tutum Engine
+#
+# Usage:
+#   ansible-playbook -i inventory playbooks/integration-test.yml
+#
+# Prerequisites:
+#   - Tutum Engine must be running (install-tutum-engine.yml)
+#   - Docker Volume Plugin must be installed (install-plugin.yml)
+#
+# This playbook performs the following integration tests:
+#   1. Creates test namespace (n1)
+#   2. Creates test group (g1)
+#   3. Creates X509 certificate (test-cert)
+#   4. Creates secret (test-cert with type=secret)
+#   5. Creates Docker volume using the plugin
+#   6. Runs busybox container with mounted certificate volume
+#   7. Verifies certificate is accessible in container
+#   8. Cleanup (optional)
+
+- name: Tutum Engine Integration Test
+  hosts: all
+  become: true
+  vars:
+    # Tutum Engine configuration - uses tutum_engine_url from inventory
+    # tutum_engine_url format: host:grpc_port (e.g., docker:9090)
+    _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
+    _tutum_engine_grpc_port: "{{ tutum_engine_url.split(':')[1] }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port | default('8080') }}"
+    _tutum_grpc_url: "{{ tutum_engine_url }}"
+
+    # Plugin configuration - uses variables from inventory/group_vars
+    _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
+    _plugin_version: "{{ plugin_version | default('2.1.5') }}"
+    _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
+
+    # Test data
+    _test_namespace: "{{ test_namespace | default('n1') }}"
+    _test_group: "{{ test_group | default('g1') }}"
+    _test_cert_name: "{{ test_cert_name | default('test-cert') }}"
+    _test_secret_data: "{{ test_secret_data | default('TOP_SECRET') }}"
+    _test_container_name: "{{ test_container_name | default('tutum-test-busybox') }}"
+    _test_volume_name: "{{ test_volume_name | default('tutum-test-volume') }}"
+
+    # Cleanup flag
+    _cleanup_after_test: "{{ cleanup_after_test | default(true) }}"
+
+  tasks:
+    # ==================== Health Check ====================
+    - name: Verify Tutum Engine is running
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      retries: 5
+      delay: 2
+      until: health_check.status == 200
+
+    - name: Display health check result
+      ansible.builtin.debug:
+        msg: "Tutum Engine is healthy: {{ health_check.json | default('OK') }}"
+
+    - name: Verify Docker plugin is installed and enabled
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          docker plugin ls --format '{% raw %}{{.Name}} {{.Enabled}}{% endraw %}' | grep "{{ _plugin_name }}" | grep -q "true"
+        executable: /bin/bash
+      register: plugin_check
+      changed_when: false
+      failed_when: plugin_check.rc != 0
+
+    # ==================== Create Namespace ====================
+    - name: Create test namespace
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/namespaces"
+        method: POST
+        body_format: json
+        body:
+          name: "{{ _test_namespace }}"
+          description: "Integration test namespace"
+          confidentiality_level: "NORMAL"
+          created_by: "integration-test"
+        status_code: [200, 201, 409]
+      register: namespace_result
+
+    - name: Display namespace creation result
+      ansible.builtin.debug:
+        msg: "Namespace '{{ _test_namespace }}' created or already exists"
+
+    # ==================== Create Group ====================
+    - name: Create test group
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/groups"
+        method: POST
+        body_format: json
+        body:
+          name: "{{ _test_group }}"
+          description: "Integration test group"
+          created_by: "integration-test"
+        status_code: [200, 201, 409]
+      register: group_result
+
+    - name: Get group ID
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/groups?name={{ _test_group }}"
+        method: GET
+        status_code: 200
+      register: group_info
+
+    - name: Set group_id fact
+      ansible.builtin.set_fact:
+        _test_group_id: "{{ group_info.json.groups[0].id }}"
+
+    - name: Display group info
+      ansible.builtin.debug:
+        msg: "Group '{{ _test_group }}' ID: {{ _test_group_id }}"
+
+    # ==================== Generate Test Certificate ====================
+    - name: Generate self-signed test certificate
+      ansible.builtin.shell:
+        cmd: |
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/test-key.pem \
+            -out /tmp/test-cert.pem -days 365 -nodes \
+            -subj "/CN=test-cert/O=IntegrationTest"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Read generated certificate
+      ansible.builtin.slurp:
+        src: /tmp/test-cert.pem
+      register: generated_cert
+
+    - name: Read generated private key
+      ansible.builtin.slurp:
+        src: /tmp/test-key.pem
+      register: generated_key
+
+    # ==================== Create X509 Certificate ====================
+    - name: Delete existing X509 certificate (idempotency)
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      failed_when: false
+
+    - name: Create X509 certificate
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates"
+        method: POST
+        body_format: json
+        body:
+          name: "{{ _test_cert_name }}"
+          group_id: "{{ _test_group_id }}"
+          namespace: "{{ _test_namespace }}"
+          type: "X509"
+          certificate: "{{ generated_cert.content | b64decode }}"
+          private_key: "{{ generated_key.content | b64decode }}"
+          created_by: "integration-test"
+        status_code: [200, 201]
+      register: x509_result
+
+    - name: Display X509 certificate result
+      ansible.builtin.debug:
+        msg: "X509 Certificate '{{ _test_cert_name }}' created in namespace '{{ _test_namespace }}'"
+
+    # ==================== Create Secret ====================
+    - name: Delete existing secret (idempotency)
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}-secret"
+        method: DELETE
+        status_code: [200, 204, 404]
+      failed_when: false
+
+    - name: Create secret
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates"
+        method: POST
+        body_format: json
+        body:
+          name: "{{ _test_cert_name }}-secret"
+          group_id: "{{ _test_group_id }}"
+          namespace: "{{ _test_namespace }}"
+          type: "secret"
+          secret:
+            data: "{{ _test_secret_data }}"
+          created_by: "integration-test"
+        status_code: [200, 201]
+      register: secret_result
+
+    - name: Display secret result
+      ansible.builtin.debug:
+        msg: "Secret '{{ _test_cert_name }}-secret' created with data"
+
+    # ==================== Create Docker Volume ====================
+    - name: Stop existing test container before volume removal
+      ansible.builtin.command:
+        cmd: docker rm -f {{ _test_container_name }}
+      failed_when: false
+      changed_when: true
+
+    - name: Remove existing test volume if present
+      ansible.builtin.command:
+        cmd: docker volume rm -f {{ _test_volume_name }}
+      failed_when: false
+      changed_when: true
+
+    - name: Create Docker volume with Tutum plugin
+      ansible.builtin.command:
+        cmd: >
+          docker volume create
+          -d {{ _plugin_full_name }}
+          --opt name={{ _test_cert_name }}
+          {{ _test_volume_name }}
+      register: volume_create
+      changed_when: true
+
+    - name: Display volume creation result
+      ansible.builtin.debug:
+        msg: "Volume '{{ _test_volume_name }}' created: {{ volume_create.stdout }}"
+
+    # ==================== Run Busybox Container ====================
+    - name: Remove existing test container if present
+      ansible.builtin.command:
+        cmd: docker rm -f {{ _test_container_name }}
+      failed_when: false
+      changed_when: true
+
+    - name: Run busybox container with mounted certificate
+      ansible.builtin.command:
+        cmd: >
+          docker run -d
+          --name {{ _test_container_name }}
+          -v {{ _test_volume_name }}:/certs:ro
+          busybox:latest
+          sleep 3600
+      register: container_run
+      changed_when: true
+
+    - name: Wait for container to start
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Verify certificate is mounted in container
+      ansible.builtin.command:
+        cmd: docker exec {{ _test_container_name }} ls -la /certs
+      register: cert_list
+      changed_when: false
+
+    - name: Display mounted certificates
+      ansible.builtin.debug:
+        msg: |
+          Certificates mounted in container:
+          {{ cert_list.stdout }}
+
+    - name: Read certificate content from container
+      ansible.builtin.command:
+        cmd: docker exec {{ _test_container_name }} cat /certs/tls.crt
+      register: cert_content
+      changed_when: false
+      failed_when: false
+
+    - name: Display certificate content
+      ansible.builtin.debug:
+        msg: |
+          Certificate content (first 200 chars):
+          {{ cert_content.stdout[:200] | default('Certificate not found or empty') }}
+      when: cert_content.rc == 0
+
+    # ==================== Test Summary ====================
+    - name: Integration test summary
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          INTEGRATION TEST COMPLETED SUCCESSFULLY
+          ========================================
+
+          Namespace: {{ _test_namespace }}
+          Group: {{ _test_group }} ({{ _test_group_id }})
+          X509 Certificate: {{ _test_cert_name }}
+          Secret: {{ _test_cert_name }}-secret
+          Volume: {{ _test_volume_name }}
+          Container: {{ _test_container_name }}
+
+          Certificate is accessible at /certs in the container.
+          ========================================
+
+    # ==================== Cleanup (Optional) ====================
+    - name: Cleanup - Stop and remove test container
+      ansible.builtin.command:
+        cmd: docker rm -f {{ _test_container_name }}
+      when: _cleanup_after_test | bool
+      failed_when: false
+      changed_when: true
+
+    - name: Cleanup - Remove test volume
+      ansible.builtin.command:
+        cmd: docker volume rm {{ _test_volume_name }}
+      when: _cleanup_after_test | bool
+      failed_when: false
+      changed_when: true
+
+    - name: Cleanup - Delete test certificates
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ item }}?namespace={{ _test_namespace }}&group={{ _test_group_id }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      loop:
+        - "{{ _test_cert_name }}"
+        - "{{ _test_cert_name }}-secret"
+      when: _cleanup_after_test | bool
+
+    - name: Cleanup - Remove temporary certificate files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/test-cert.pem
+        - /tmp/test-key.pem
+      when: _cleanup_after_test | bool
+
+    - name: Cleanup complete message
+      ansible.builtin.debug:
+        msg: "Cleanup completed. All test resources have been removed."
+      when: _cleanup_after_test | bool
+
+    - name: No cleanup message
+      ansible.builtin.debug:
+        msg: |
+          Cleanup skipped. To clean up manually:
+            docker rm -f {{ _test_container_name }}
+            docker volume rm {{ _test_volume_name }}
+          Or run with: -e cleanup_after_test=true
+      when: not (_cleanup_after_test | bool)

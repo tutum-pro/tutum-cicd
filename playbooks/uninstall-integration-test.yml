@@ -1,0 +1,150 @@
+---
+# Ansible Playbook: Uninstall/Cleanup Integration Test Resources
+#
+# Usage:
+#   ansible-playbook -i inventory playbooks/uninstall-integration-test.yml
+#
+# Variables:
+#   remove_namespace: false (set to true to also remove the test namespace)
+#   remove_group: false (set to true to also remove the test group)
+
+- name: Uninstall Integration Test Resources
+  hosts: all
+  become: true
+  vars:
+    # Tutum Engine configuration
+    _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port | default('8080') }}"
+
+    # Test data - must match integration-test.yml values
+    _test_namespace: "{{ test_namespace | default('n1') }}"
+    _test_group: "{{ test_group | default('g1') }}"
+    _test_cert_name: "{{ test_cert_name | default('test-cert') }}"
+    _test_container_name: "{{ test_container_name | default('tutum-test-busybox') }}"
+    _test_volume_name: "{{ test_volume_name | default('tutum-test-volume') }}"
+
+    # Cleanup options
+    _remove_namespace: "{{ remove_namespace | default(false) }}"
+    _remove_group: "{{ remove_group | default(false) }}"
+
+  tasks:
+    # ==================== Stop and Remove Container ====================
+    - name: Stop test container
+      ansible.builtin.command: docker stop {{ _test_container_name }}
+      failed_when: false
+      changed_when: true
+
+    - name: Remove test container
+      ansible.builtin.command: docker rm {{ _test_container_name }}
+      failed_when: false
+      changed_when: true
+
+    # ==================== Remove Docker Volume ====================
+    - name: Remove test volume
+      ansible.builtin.command: docker volume rm {{ _test_volume_name }}
+      failed_when: false
+      changed_when: true
+
+    # ==================== Get Group ID ====================
+    - name: Check if Tutum Engine is running
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/health"
+        method: GET
+        status_code: [200, 000]
+      register: health_check
+      failed_when: false
+
+    - name: Get group ID
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/groups?name={{ _test_group }}"
+        method: GET
+        status_code: [200, 404]
+      register: group_info
+      when: health_check.status == 200
+      failed_when: false
+
+    - name: Set group_id fact
+      ansible.builtin.set_fact:
+        _test_group_id: "{{ group_info.json.groups[0].id | default('') }}"
+      when: health_check.status == 200 and group_info.json.groups | default([]) | length > 0
+
+    # ==================== Delete Certificates ====================
+    - name: Delete test X509 certificate
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}?namespace={{ _test_namespace }}&group={{ _test_group_id | default('') }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      when: health_check.status == 200
+      failed_when: false
+
+    - name: Delete test secret
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}-secret?namespace={{ _test_namespace }}&group={{ _test_group_id | default('') }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      when: health_check.status == 200
+      failed_when: false
+
+    # ==================== Remove Group (Optional) ====================
+    - name: Delete test group
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/groups/{{ _test_group_id }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      when:
+        - health_check.status == 200
+        - _remove_group | bool
+        - _test_group_id | default('') | length > 0
+      failed_when: false
+
+    # ==================== Remove Namespace (Optional) ====================
+    - name: Delete test namespace
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/namespaces/{{ _test_namespace }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      when:
+        - health_check.status == 200
+        - _remove_namespace | bool
+      failed_when: false
+
+    # ==================== Cleanup Temporary Files ====================
+    - name: Remove temporary certificate files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/test-cert.pem
+        - /tmp/test-key.pem
+
+    # ==================== Summary ====================
+    - name: Display cleanup result
+      ansible.builtin.debug:
+        msg: |
+          Integration test resources removed:
+
+          Docker resources:
+            - Container: {{ _test_container_name }}
+            - Volume: {{ _test_volume_name }}
+
+          {% if health_check.status == 200 %}
+          Tutum Engine resources:
+            - Certificate: {{ _test_cert_name }}
+            - Secret: {{ _test_cert_name }}-secret
+          {% if _remove_group | bool %}
+            - Group: {{ _test_group }}
+          {% else %}
+            - Group: {{ _test_group }} (preserved, use -e remove_group=true to delete)
+          {% endif %}
+          {% if _remove_namespace | bool %}
+            - Namespace: {{ _test_namespace }}
+          {% else %}
+            - Namespace: {{ _test_namespace }} (preserved, use -e remove_namespace=true to delete)
+          {% endif %}
+          {% else %}
+          Tutum Engine not running - skipped API cleanup.
+          {% endif %}
+
+          Temporary files removed:
+            - /tmp/test-cert.pem
+            - /tmp/test-key.pem

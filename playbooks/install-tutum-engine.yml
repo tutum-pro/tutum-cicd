@@ -17,7 +17,7 @@
   become: true
   vars:
     # Versions
-    _tutum_engine_version: "{{ tutum_engine_version | default('2.1.19') }}"
+    _tutum_engine_version: "{{ tutum_engine_version | default('3.3.1') }}"
     _postgres_version: "{{ postgres_version | default('15-alpine') }}"
 
     # Database configuration
@@ -193,9 +193,9 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          # Check if migration is already applied
+          # Check if migration is already applied (check both with and without .sql suffix for compatibility)
           APPLIED=$(docker exec tutum-postgres psql -U {{ _db_user }} -d {{ _db_name }} -t -c \
-            "SELECT COUNT(*) FROM schema_migrations WHERE version = '{{ migration_version }}';" | tr -d ' ')
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = '{{ migration_version }}' OR version = '{{ migration_name }}';" | tr -d ' ')
 
           if [ "$APPLIED" = "0" ]; then
             echo "Applying migration: {{ migration_name }}"

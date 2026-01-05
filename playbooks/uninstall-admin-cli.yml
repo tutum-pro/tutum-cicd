@@ -1,0 +1,52 @@
+---
+# Ansible Playbook: Uninstall Tutum Admin CLI Container
+#
+# Usage:
+#   ansible-playbook -i inventory uninstall-admin-cli.yml
+#
+# Variables:
+#   cli_container_name: tutum-admin-cli
+#   remove_image: false
+
+- name: Uninstall Tutum Admin CLI Container
+  hosts: all
+  become: true
+  vars:
+    _cli_name: "{{ cli_name | default('tutumpro/tutum-admin-cli') }}"
+    _cli_version: "{{ cli_version | default('0.1.76') }}"
+    _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
+    _cli_container_name: "{{ cli_container_name | default('tutum-admin-cli') }}"
+    _remove_image: "{{ remove_image | default(false) }}"
+
+  tasks:
+    - name: Check if container exists
+      ansible.builtin.command: docker ps -a --filter "name={{ _cli_container_name }}" --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: container_check
+      changed_when: false
+      failed_when: false
+
+    - name: Stop container if running
+      ansible.builtin.command: docker stop "{{ _cli_container_name }}"
+      when: _cli_container_name in container_check.stdout
+      failed_when: false
+      changed_when: true
+
+    - name: Remove container
+      ansible.builtin.command: docker rm "{{ _cli_container_name }}"
+      when: _cli_container_name in container_check.stdout
+      failed_when: false
+      changed_when: true
+
+    - name: Remove image (optional)
+      ansible.builtin.command: docker rmi "{{ _cli_full_name }}"
+      when: _remove_image | bool
+      failed_when: false
+      changed_when: true
+
+    - name: Display uninstall result
+      ansible.builtin.debug:
+        msg: |
+          Tutum Admin CLI container removed successfully!
+
+          Container: {{ _cli_container_name }}
+          Image removed: {{ _remove_image | bool }}

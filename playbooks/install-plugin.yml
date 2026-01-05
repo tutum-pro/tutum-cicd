@@ -18,7 +18,7 @@
     _plugin_name: "{{ plugin_name | default('tutumpro/tutum-csi-driver-docker') }}"
     _plugin_version: "{{ plugin_version | default('2.1.5') }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
-    _tutum_engine_url: "{{ tutum_engine_url | default('localhost:9090') }}"
+    _tutum_engine_url: "{{ tutum_engine_url | default('tutum-engine:9090') }}"
     _volume_dir: "{{ volume_dir | default('/var/lib/tutum/volumes') }}"
     _log_level: "{{ log_level | default('info') }}"
     _plugin_temp_dir: "/tmp/tutum-plugin-{{ ansible_facts['date_time']['epoch'] }}"
@@ -41,13 +41,13 @@
       failed_when: false
 
     - name: Disable existing plugin
-      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}"
+      ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}" -f
       when: plugin_exists.rc == 0
       failed_when: false
       changed_when: true
 
     - name: Remove existing plugin
-      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}"
+      ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}" -f
       when: plugin_exists.rc == 0
       failed_when: false
       changed_when: true
@@ -59,7 +59,7 @@
 
     - name: Create temporary directory for plugin
       ansible.builtin.file:
-        path: "{{ _plugin_temp_dir }}/rootfs"
+        path: "{{ _plugin_temp_dir }}/rootfs/bin"
         state: directory
         mode: '0755'
 
@@ -68,11 +68,11 @@
       register: container_create
       changed_when: true
 
-    - name: Export container filesystem to rootfs
+    - name: Extract only the plugin binary from container
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          docker export tutum-plugin-temp | tar -x -C "{{ _plugin_temp_dir }}/rootfs"
+          docker cp tutum-plugin-temp:/bin/tutum-csi-driver-docker "{{ _plugin_temp_dir }}/rootfs/bin/tutum-csi-driver-docker"
         executable: /bin/bash
       changed_when: true
 
@@ -91,7 +91,7 @@
             "entrypoint": [
               "/bin/tutum-csi-driver-docker",
               "--tutum-engine-url", "{{ _tutum_engine_url }}",
-              "--mount-root", "/mnt/volumes",
+              "--mount-root", "{{ _volume_dir }}",
               "--log-level", "{{ _log_level }}"
             ],
             "network": {

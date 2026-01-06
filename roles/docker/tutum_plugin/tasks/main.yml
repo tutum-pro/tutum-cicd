@@ -1,0 +1,10 @@
+---
+# Tutum Docker Plugin Role - Main Tasks
+
+- name: Include install tasks
+  ansible.builtin.include_tasks: install.yml
+  when: docker_tutum_plugin_state == "present"
+
+- name: Include uninstall tasks
+  ansible.builtin.include_tasks: uninstall.yml
+  when: docker_tutum_plugin_state == "absent"

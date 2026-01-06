@@ -1,0 +1,206 @@
+---
+# Tutum Version Report Role Tasks
+
+- name: Set plugin full name
+  ansible.builtin.set_fact:
+    _plugin_full_name: "{{ docker_tutum_plugin_image }}:{{ docker_tutum_plugin_version }}"
+
+# ==================== Collect Container Information ====================
+- name: Get Tutum Engine container info
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-engine --format '{{ '{{' }}json .Config.Labels{{ '}}' }}' 2>/dev/null || echo '{}'
+    executable: /bin/bash
+  register: _engine_labels
+  changed_when: false
+  failed_when: false
+
+- name: Get Tutum Engine image
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-engine --format '{{ '{{' }}.Config.Image{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _engine_image
+  changed_when: false
+  failed_when: false
+
+- name: Get Tutum Engine status
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-engine --format '{{ '{{' }}.State.Status{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _engine_status
+  changed_when: false
+  failed_when: false
+
+- name: Get PostgreSQL container info
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-postgres --format '{{ '{{' }}json .Config.Labels{{ '}}' }}' 2>/dev/null || echo '{}'
+    executable: /bin/bash
+  register: _postgres_labels
+  changed_when: false
+  failed_when: false
+
+- name: Get PostgreSQL image
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-postgres --format '{{ '{{' }}.Config.Image{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _postgres_image
+  changed_when: false
+  failed_when: false
+
+- name: Get PostgreSQL status
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-postgres --format '{{ '{{' }}.State.Status{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _postgres_status
+  changed_when: false
+  failed_when: false
+
+- name: Get Tutum Admin CLI container info
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-admin-cli --format '{{ '{{' }}json .Config.Labels{{ '}}' }}' 2>/dev/null || echo '{}'
+    executable: /bin/bash
+  register: _cli_labels
+  changed_when: false
+  failed_when: false
+
+- name: Get Tutum Admin CLI image
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-admin-cli --format '{{ '{{' }}.Config.Image{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _cli_image
+  changed_when: false
+  failed_when: false
+
+- name: Get Tutum Admin CLI status
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker inspect tutum-admin-cli --format '{{ '{{' }}.State.Status{{ '}}' }}' 2>/dev/null || echo 'NOT INSTALLED'
+    executable: /bin/bash
+  register: _cli_status
+  changed_when: false
+  failed_when: false
+
+# ==================== Collect Plugin Information ====================
+- name: Get plugin info
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker plugin inspect {{ _plugin_full_name }} --format '{{ '{{' }}json .Settings.Env{{ '}}' }}' 2>/dev/null || echo '[]'
+    executable: /bin/bash
+  register: _plugin_env
+  changed_when: false
+  failed_when: false
+
+- name: Get plugin status
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      if docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' 2>/dev/null | grep -q "{{ docker_tutum_plugin_image }}"; then
+        ENABLED=$(docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Enabled{{ '}}' }}' | grep "{{ docker_tutum_plugin_image }}" | cut -d: -f3)
+        if [ "$ENABLED" = "true" ]; then
+          echo "enabled"
+        else
+          echo "disabled"
+        fi
+      else
+        echo "NOT INSTALLED"
+      fi
+    executable: /bin/bash
+  register: _plugin_status
+  changed_when: false
+  failed_when: false
+
+# ==================== Parse Labels ====================
+- name: Parse engine labels
+  ansible.builtin.set_fact:
+    _engine_parsed_labels: "{{ _engine_labels.stdout | from_json }}"
+  when: _engine_labels.stdout != '{}'
+  failed_when: false
+
+- name: Parse postgres labels
+  ansible.builtin.set_fact:
+    _postgres_parsed_labels: "{{ _postgres_labels.stdout | from_json }}"
+  when: _postgres_labels.stdout != '{}'
+  failed_when: false
+
+- name: Parse CLI labels
+  ansible.builtin.set_fact:
+    _cli_parsed_labels: "{{ _cli_labels.stdout | from_json }}"
+  when: _cli_labels.stdout != '{}'
+  failed_when: false
+
+- name: Parse plugin environment
+  ansible.builtin.set_fact:
+    _plugin_cicd_version: >-
+      {{ (_plugin_env.stdout | from_json | selectattr('Name', 'equalto', 'TUTUM_CICD_VERSION') | first).Value | default('N/A') }}
+  when: _plugin_env.stdout != '[]'
+  failed_when: false
+
+# ==================== Set Version Variables ====================
+- name: Set version variables for report
+  ansible.builtin.set_fact:
+    _engine_cicd: "{{ _engine_parsed_labels['tutum-cicd.version'] | default('N/A') }}"
+    _postgres_cicd: "{{ _postgres_parsed_labels['tutum-cicd.version'] | default('N/A') }}"
+    _cli_cicd: "{{ _cli_parsed_labels['tutum-cicd.version'] | default('N/A') }}"
+    _final_plugin_cicd: "{{ _plugin_cicd_version | default('N/A') }}"
+
+# ==================== Display Report ====================
+- name: Display Version Report
+  vars:
+    _line: "────────────────────────────────────────────────────────────"
+  ansible.builtin.debug:
+    msg:
+      - ""
+      - "TUTUM VERSION REPORT"
+      - "{{ _line }}"
+      - "Host: {{ ansible_facts['hostname'] | default('unknown') }}"
+      - "Date: {{ ansible_facts['date_time']['iso8601'] | default('unknown') }}"
+      - ""
+      - "EXPECTED VERSIONS"
+      - "{{ _line }}"
+      - "  CI/CD Version:     {{ docker_tutum_cicd_version }}"
+      - "  Engine Version:    {{ docker_tutum_engine_version }}"
+      - "  CLI Version:       {{ docker_tutum_cli_version }}"
+      - "  Plugin Version:    {{ docker_tutum_plugin_version }}"
+      - "  PostgreSQL:        {{ docker_tutum_postgres_version }}"
+      - ""
+      - "INSTALLED COMPONENTS"
+      - "{{ _line }}"
+      - ""
+      - "TUTUM ENGINE"
+      - "  Status:        {{ _engine_status.stdout | default('NOT INSTALLED') }}"
+      - "  Image:         {{ _engine_image.stdout | default('N/A') }}"
+      - "  CI/CD Version: {{ _engine_cicd }}"
+      - ""
+      - "POSTGRESQL"
+      - "  Status:        {{ _postgres_status.stdout | default('NOT INSTALLED') }}"
+      - "  Image:         {{ _postgres_image.stdout | default('N/A') }}"
+      - "  CI/CD Version: {{ _postgres_cicd }}"
+      - ""
+      - "TUTUM ADMIN CLI"
+      - "  Status:        {{ _cli_status.stdout | default('NOT INSTALLED') }}"
+      - "  Image:         {{ _cli_image.stdout | default('N/A') }}"
+      - "  CI/CD Version: {{ _cli_cicd }}"
+      - ""
+      - "TUTUM DOCKER PLUGIN"
+      - "  Status:        {{ _plugin_status.stdout | default('NOT INSTALLED') }}"
+      - "  Plugin:        {{ _plugin_full_name }}"
+      - "  CI/CD Version: {{ _final_plugin_cicd }}"
+      - ""
+      - "{{ _line }}"

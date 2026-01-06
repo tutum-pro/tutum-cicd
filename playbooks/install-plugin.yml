@@ -7,7 +7,7 @@
 # Variables:
 #   plugin_name: tutumpro/tutum-csi-driver-docker
 #   plugin_version: 2.1.5
-#   tutum_engine_url: localhost:9090
+#   docker_tutum_engine_url: localhost:9090
 #   volume_dir: /var/lib/tutum/volumes
 #   log_level: info
 
@@ -23,7 +23,7 @@
     _plugin_version: "{{ plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
     # Plugin runs inside Docker network, needs internal URL
-    _tutum_engine_url: "{{ tutum_engine_internal_url }}"
+    _docker_tutum_engine_url: "{{ tutum_engine_internal_url }}"
     _volume_dir: "{{ volume_dir }}"
     _log_level: "{{ log_level }}"
     _plugin_temp_dir: "/tmp/tutum-plugin-{{ ansible_facts['date_time']['epoch'] }}"
@@ -95,7 +95,7 @@
             "documentation": "https://github.com/tutum/tutum-platform",
             "entrypoint": [
               "/bin/tutum-csi-driver-docker",
-              "--tutum-engine-url", "{{ _tutum_engine_url }}",
+              "--tutum-engine-url", "{{ _docker_tutum_engine_url }}",
               "--mount-root", "{{ _volume_dir }}",
               "--log-level", "{{ _log_level }}"
             ],
@@ -133,7 +133,7 @@
               {
                 "name": "TUTUM_ENGINE_URL",
                 "description": "Tutum Engine gRPC URL",
-                "value": "{{ _tutum_engine_url }}"
+                "value": "{{ _docker_tutum_engine_url }}"
               },
               {
                 "name": "LOG_LEVEL",
@@ -180,7 +180,7 @@
           Tutum Docker Volume Plugin installed successfully!
 
           Plugin: {{ _plugin_full_name }}
-          Tutum Engine URL: {{ _tutum_engine_url }}
+          Tutum Engine URL: {{ _docker_tutum_engine_url }}
           Volume Directory: {{ _volume_dir }}
 
           Example usage:

@@ -1,0 +1,17 @@
+---
+# Tutum Pro - Full Stack Installation (Docker)
+# This playbook installs all Tutum components on Docker
+#
+# Usage from external project:
+#   ansible-playbook tutumpro.cicd.site
+#
+# Or with custom inventory:
+#   ansible-playbook -i inventory/hosts.yml tutumpro.cicd.site
+
+- name: Install Tutum Pro Full Stack (Docker)
+  hosts: all
+  become: true
+  roles:
+    - role: tutumpro.cicd.docker.tutum_engine
+    - role: tutumpro.cicd.docker.tutum_plugin
+    - role: tutumpro.cicd.docker.tutum_cli

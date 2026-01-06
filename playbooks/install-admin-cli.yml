@@ -21,7 +21,7 @@
     _cli_version: "{{ cli_version }}"
     _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
     _cli_container_name: "{{ cli_container_name }}"
-    _tutum_engine_url: "{{ tutum_engine_url }}"
+    _docker_tutum_engine_url: "{{ docker_tutum_engine_url }}"
 
   tasks:
     - name: Verify Docker is running
@@ -55,8 +55,8 @@
             --label tutum-cicd.version={{ _cicd_version }} \
             --label tutum-cicd.component=cli \
             --label tutum-cicd.image={{ _cli_full_name }} \
-            -e TUTUM_ENGINE_URL={{ _tutum_engine_url }} \
-            -e TUTUM_ENGINE_REST_URL=http://{{ _tutum_engine_url.split(':')[0] }}:8080 \
+            -e TUTUM_ENGINE_URL={{ _docker_tutum_engine_url }} \
+            -e TUTUM_ENGINE_REST_URL=http://{{ _docker_tutum_engine_url.split(':')[0] }}:8080 \
             -e TUTUM_USE_TLS=false \
             --entrypoint sh \
             {{ _cli_full_name }} \
@@ -84,5 +84,5 @@
 
           Usage:
             docker exec {{ _cli_container_name }} tutum-admin-cli --help
-            docker exec {{ _cli_container_name }} tutum-admin-cli cert list --server {{ _tutum_engine_url }}
-            docker exec {{ _cli_container_name }} tutum-admin-cli namespace list --server {{ _tutum_engine_url }}
+            docker exec {{ _cli_container_name }} tutum-admin-cli cert list --server {{ _docker_tutum_engine_url }}
+            docker exec {{ _cli_container_name }} tutum-admin-cli namespace list --server {{ _docker_tutum_engine_url }}

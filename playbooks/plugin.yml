@@ -1,0 +1,11 @@
+---
+# Tutum Docker Plugin Installation Playbook
+#
+# Usage:
+#   ansible-playbook tutumpro.cicd.plugin
+
+- name: Install Tutum Docker Plugin
+  hosts: all
+  become: true
+  roles:
+    - role: tutumpro.cicd.docker.tutum_plugin

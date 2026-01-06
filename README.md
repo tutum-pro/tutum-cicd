@@ -1,263 +1,244 @@
-# Tutum Platform - CI/CD Automation
+# Tutum Pro CI/CD - Ansible Collection
 
-Ansible automation for deploying and managing the Tutum Platform:
-- **Tutum Engine** - Certificate management server with PostgreSQL
-- **Tutum CSI Driver** - Docker volume plugin for certificate distribution
+Ansible collection for deploying Tutum Pro certificate management platform.
+
+**Collection:** `tutumpro.cicd`
+
+## Installation
+
+### From Ansible Galaxy
+
+```bash
+ansible-galaxy collection install tutumpro.cicd
+```
+
+### From Git
+
+```bash
+ansible-galaxy collection install git+https://github.com/tutum/tutum-cicd.git
+```
+
+### Using requirements.yml
+
+```yaml
+# requirements.yml
+collections:
+  - name: tutumpro.cicd
+    version: ">=1.0.0"
+```
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+## Quick Start
+
+### Using Collection Playbooks
+
+```bash
+# Install all components (Docker)
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.site
+
+# Install individual components
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.engine
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.plugin
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.cli
+
+# Show version report
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.report
+
+# Uninstall all
+ansible-playbook -i inventory/hosts.yml tutumpro.cicd.uninstall
+```
+
+### Using Roles in Your Playbook
+
+```yaml
+# site.yml
+- name: Deploy Tutum Pro
+  hosts: docker_servers
+  become: true
+
+  vars:
+    docker_tutum_engine_version: "3.3.5"
+    docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
+    docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
+
+  roles:
+    - role: tutumpro.cicd.docker.tutum_engine
+    - role: tutumpro.cicd.docker.tutum_plugin
+    - role: tutumpro.cicd.docker.tutum_cli
+```
+
+## Roles
+
+### Docker Roles (`docker.*`)
+
+For deployment on Docker hosts. Located in `roles/docker/`.
+
+All variables use `docker_tutum_` prefix.
+
+#### tutumpro.cicd.docker.tutum_engine
+
+Installs Tutum Engine with PostgreSQL database.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `docker_tutum_engine_version` | `3.3.5` | Tutum Engine version |
+| `docker_tutum_postgres_version` | `15-alpine` | PostgreSQL version |
+| `docker_tutum_db_name` | `tutum` | Database name |
+| `docker_tutum_db_user` | `tutum` | Database user |
+| `docker_tutum_db_password` | `tutum` | Database password |
+| `docker_tutum_master_key` | (generated) | 32-char AES-256 encryption key |
+| `docker_tutum_jwt_secret` | (generated) | 32-char JWT secret |
+| `docker_tutum_rest_port` | `8080` | REST API port |
+| `docker_tutum_grpc_port` | `9090` | gRPC API port |
+| `docker_tutum_log_level` | `info` | Log level |
+| `docker_tutum_engine_state` | `present` | `present` or `absent` |
+| `docker_tutum_engine_remove_data` | `false` | Remove data on uninstall |
+
+#### tutumpro.cicd.docker.tutum_plugin
+
+Installs Tutum Docker Volume Plugin.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `docker_tutum_plugin_version` | `2.1.6` | Plugin version |
+| `docker_tutum_engine_url` | `localhost:9090` | Tutum Engine gRPC URL |
+| `docker_tutum_volume_dir` | `/var/lib/tutum/volumes` | Volume mount directory |
+| `docker_tutum_log_level` | `info` | Log level |
+| `docker_tutum_plugin_state` | `present` | `present` or `absent` |
+| `docker_tutum_plugin_remove_volumes` | `false` | Remove volumes on uninstall |
+
+#### tutumpro.cicd.docker.tutum_cli
+
+Installs Tutum Admin CLI container.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `docker_tutum_cli_version` | `0.1.76` | CLI version |
+| `docker_tutum_cli_container_name` | `tutum-admin-cli` | Container name |
+| `docker_tutum_engine_url` | `localhost:9090` | Tutum Engine gRPC URL |
+| `docker_tutum_cli_state` | `present` | `present` or `absent` |
+
+#### tutumpro.cicd.docker.tutum_report
+
+Generates version report of installed Docker components.
+
+### Kubernetes Roles (`k8s.*`) - Coming Soon
+
+For deployment on Kubernetes clusters. Will be located in `roles/k8s/`.
+Variables will use `k8s_tutum_` prefix.
+
+- `tutumpro.cicd.k8s.tutum_engine` - Tutum Engine Helm chart deployment
+- `tutumpro.cicd.k8s.tutum_csi_driver` - Kubernetes CSI driver for certificates
+
+## Example: External Project
+
+See `docs/examples/external-project/` for a complete example of using this collection in your project.
+
+```
+my-project/
+├── requirements.yml          # Collection dependency
+├── inventory/
+│   ├── hosts.yml
+│   └── group_vars/all.yml    # Your configuration
+├── site.yml                  # Your playbook using roles
+└── Makefile                  # Your deployment commands
+```
+
+## Development / Local Usage
+
+If using this repository directly (not as a collection):
+
+```bash
+# Show available targets
+make help
+
+# Install all components
+make install-all
+
+# Install individually
+make install-engine
+make install-plugin
+make install-cli
+
+# Show version report
+make report
+
+# Uninstall
+make uninstall-all
+
+# Run tests
+make test
+```
+
+### Building the Collection
+
+```bash
+# Build tarball
+make collection-build
+
+# Install locally for testing
+make collection-install
+
+# Publish to Galaxy
+GALAXY_API_KEY=your_key make collection-publish
+```
 
 ## Directory Structure
 
 ```
 tutum-cicd/
-├── ansible.cfg           # Ansible configuration
-├── inventory/
-│   ├── docker            # Your inventory (create from docker.example)
-│   └── docker.example    # Example inventory template
-├── group_vars/
-│   └── all.yml           # Default variables for all hosts
-├── host_vars/            # Per-host variable overrides
+├── galaxy.yml                 # Collection metadata
+├── version                    # Version file
+├── Makefile                   # Build and deployment tasks
+├── roles/
+│   ├── docker/               # Docker platform roles (docker_tutum_* vars)
+│   │   ├── tutum_engine/     # Engine + PostgreSQL
+│   │   ├── tutum_plugin/     # Volume Plugin
+│   │   ├── tutum_cli/        # Admin CLI
+│   │   └── tutum_report/     # Version report
+│   └── k8s/                  # (future) Kubernetes roles (k8s_tutum_* vars)
+│       ├── tutum_engine/
+│       └── tutum_csi_driver/
 ├── playbooks/
-│   ├── install-tutum-engine.yml    # Install Tutum Engine + PostgreSQL
-│   ├── uninstall-tutum-engine.yml  # Remove Tutum Engine + PostgreSQL
-│   ├── install-plugin.yml          # Install Docker volume plugin
-│   └── uninstall-plugin.yml        # Remove Docker volume plugin
-├── files/
-│   └── migrations/       # Database migration files
-├── roles/                # Custom roles (future)
-└── logs/                 # Ansible logs
+│   ├── site.yml              # Full stack installation
+│   ├── engine.yml            # Engine only
+│   ├── plugin.yml            # Plugin only
+│   ├── cli.yml               # CLI only
+│   ├── report.yml            # Version report
+│   └── uninstall.yml         # Full stack uninstall
+├── inventory/                 # Local development inventory
+└── docs/
+    └── examples/
+        └── external-project/  # Example external project
 ```
-
-## Quick Start
-
-```bash
-# 1. Enter the tutum-cicd directory
-cd tutum-cicd
-
-# 2. Create inventory from example
-cp inventory/docker.example inventory/docker
-
-# 3. Edit inventory with your hosts
-vim inventory/docker
-
-# 4. Test connectivity
-ansible all -m ping
-
-# 5. Install Tutum Engine with PostgreSQL
-ansible-playbook playbooks/install-tutum-engine.yml
-
-# 6. Install Docker Volume Plugin
-ansible-playbook playbooks/install-plugin.yml
-```
-
-## Usage
-
-### All commands must be run from the `tutum-cicd` directory!
-
-```bash
-cd /path/to/tutum-cicd
-```
-
-### Install Tutum Engine
-
-```bash
-# With defaults
-ansible-playbook playbooks/install-tutum-engine.yml
-
-# With custom variables
-ansible-playbook playbooks/install-tutum-engine.yml \
-  -e tutum_engine_version=2.1.19 \
-  -e db_password=secure_password
-
-# With secure master key (recommended for production)
-ansible-playbook playbooks/install-tutum-engine.yml \
-  -e tutum_master_key=$(openssl rand -base64 32) \
-  -e tutum_jwt_secret=$(openssl rand -base64 32)
-
-# Target specific hosts
-ansible-playbook playbooks/install-tutum-engine.yml --limit production
-```
-
-### Install Docker Volume Plugin
-
-```bash
-# With defaults
-ansible-playbook playbooks/install-plugin.yml
-
-# With custom Tutum Engine URL
-ansible-playbook playbooks/install-plugin.yml \
-  -e tutum_engine_url=tutum-engine.local:9090
-
-# Specific version
-ansible-playbook playbooks/install-plugin.yml \
-  -e plugin_version=2.1.5
-```
-
-### Uninstall
-
-```bash
-# Remove Tutum Engine (keep data)
-ansible-playbook playbooks/uninstall-tutum-engine.yml
-
-# Remove Tutum Engine and data (DESTRUCTIVE!)
-ansible-playbook playbooks/uninstall-tutum-engine.yml -e remove_data=true
-
-# Remove plugin (keep volumes)
-ansible-playbook playbooks/uninstall-plugin.yml
-
-# Remove plugin and volumes
-ansible-playbook playbooks/uninstall-plugin.yml -e remove_volumes=true
-```
-
-## Configuration
-
-### Inventory
-
-Edit `inventory/docker` to define your target hosts:
-
-```ini
-[docker_hosts]
-server1 ansible_host=192.168.1.100
-server2 ansible_host=192.168.1.101
-
-[docker_hosts:vars]
-ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/id_rsa
-```
-
-### Variables
-
-Default variables are in `group_vars/all.yml`. Override them:
-
-1. **In inventory** - for group-specific settings
-2. **In host_vars/** - for per-host settings
-3. **On command line** - with `-e variable=value`
-
-### Key Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `tutum_engine_version` | `2.1.19` | Tutum Engine version |
-| `postgres_version` | `15-alpine` | PostgreSQL version |
-| `db_name` | `tutum` | Database name |
-| `db_user` | `tutum` | Database user |
-| `db_password` | `tutum` | Database password |
-| `tutum_master_key` | (auto-gen) | Encryption master key |
-| `tutum_jwt_secret` | (auto-gen) | JWT signing secret |
-| `tutum_rest_port` | `8080` | REST API port |
-| `tutum_grpc_port` | `9090` | gRPC API port |
-| `plugin_version` | `2.1.5` | CSI Driver version |
-| `tutum_engine_url` | `localhost:9090` | Engine URL for plugin |
 
 ## Production Deployment
 
-### 1. Generate Secure Keys
+### Generate Secure Keys
 
 ```bash
-# Generate master key
-export TUTUM_MASTER_KEY=$(openssl rand -base64 32)
-echo "Master Key: $TUTUM_MASTER_KEY"
-
-# Generate JWT secret
-export TUTUM_JWT_SECRET=$(openssl rand -base64 32)
-echo "JWT Secret: $TUTUM_JWT_SECRET"
+# Generate 32-character keys
+openssl rand -base64 32 | head -c 32
 ```
 
-### 2. Use Ansible Vault (Recommended)
+### Use Ansible Vault
 
 ```bash
 # Create encrypted vars file
-ansible-vault create group_vars/production/vault.yml
+ansible-vault create inventory/group_vars/vault.yml
 
-# Add secrets:
-# tutum_master_key: "your-secure-key"
-# tutum_jwt_secret: "your-jwt-secret"
-# db_password: "your-db-password"
+# Contents:
+# docker_tutum_master_key: "your-32-char-key"
+# docker_tutum_jwt_secret: "your-32-char-secret"
+# docker_tutum_db_password: "secure-password"
 
 # Run with vault
-ansible-playbook playbooks/install-tutum-engine.yml \
-  --limit production \
-  --ask-vault-pass
+ansible-playbook site.yml --ask-vault-pass
 ```
 
-### 3. Deploy
+## License
 
-```bash
-ansible-playbook playbooks/install-tutum-engine.yml --limit production
-ansible-playbook playbooks/install-plugin.yml --limit production
-```
-
-## Troubleshooting
-
-### Test Connectivity
-
-```bash
-ansible all -m ping
-```
-
-### Check Services
-
-```bash
-# All containers
-ansible all -m shell -a "docker ps"
-
-# Tutum Engine health
-ansible all -m shell -a "curl -s http://localhost:8080/health"
-
-# Plugin status
-ansible all -m shell -a "docker plugin ls"
-```
-
-### View Logs
-
-```bash
-# Tutum Engine logs
-ansible all -m shell -a "docker logs tutum-engine --tail 50"
-
-# PostgreSQL logs
-ansible all -m shell -a "docker logs tutum-postgres --tail 50"
-
-# Ansible logs
-cat logs/ansible.log
-```
-
-### Migration Status
-
-```bash
-ansible all -m shell -a "docker exec tutum-postgres psql -U tutum -d tutum -c 'SELECT * FROM schema_migrations;'"
-```
-
-## CI/CD Integration
-
-### GitLab CI
-
-```yaml
-deploy:
-  stage: deploy
-  image: ansible/ansible-runner
-  script:
-    - cd tutum-cicd
-    - ansible-playbook playbooks/install-tutum-engine.yml
-    - ansible-playbook playbooks/install-plugin.yml
-```
-
-### GitHub Actions
-
-```yaml
-- name: Deploy Tutum Platform
-  run: |
-    cd tutum-cicd
-    ansible-playbook playbooks/install-tutum-engine.yml
-    ansible-playbook playbooks/install-plugin.yml
-  env:
-    ANSIBLE_HOST_KEY_CHECKING: 'false'
-```
-
-## File Locations
-
-After installation:
-
-| Component | Location |
-|-----------|----------|
-| PostgreSQL data | `/var/lib/tutum/postgres` |
-| Migrations | `/etc/tutum/migrations` |
-| Volume data | `/var/lib/tutum/volumes` |
-| Logs | `journalctl -u docker` |
+MIT

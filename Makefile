@@ -12,7 +12,7 @@ export NC := $(shell printf '\033[0m')
 help: ## Show this help message
 	@printf '\n'
 	@printf '$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)\n'
-	@printf '$(CYAN)║$(NC)  $(BOLD)$(MAGENTA)Tutum CI/CD Ansible Playbooks$(NC)                               $(CYAN)║$(NC)\n'
+	@printf '$(CYAN)║$(NC)  $(BOLD)$(MAGENTA)Tutum Pro CI/CD Ansible Collection$(NC)                          $(CYAN)║$(NC)\n'
 	@printf '$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)\n'
 	@printf '\n'
 	@printf '$(CYAN)Usage:$(NC) make $(GREEN)[target]$(NC) $(YELLOW)[INVENTORY=path] [EXTRA_VARS="-e key=val"]$(NC)\n'
@@ -23,7 +23,7 @@ help: ## Show this help message
 	@printf '\n'
 	@printf '$(YELLOW)Examples:$(NC)\n'
 	@printf '  make install-engine\n'
-	@printf '  make install-engine INVENTORY=inventory/production.yml\n'
+	@printf '  make collection-build\n'
 	@printf '  make uninstall-all EXTRA_VARS="-e remove_data=true -e remove_volumes=true"\n'
 	@printf '\n'
 	@printf '$(YELLOW)Available targets:$(NC)\n'
@@ -34,6 +34,50 @@ help: ## Show this help message
 VERSION?=$(shell cat version 2>/dev/null || echo "0.0.0")
 INVENTORY?=inventory/hosts.yml
 EXTRA_VARS?=
+NAMESPACE?=tutumpro
+COLLECTION_NAME?=cicd
+
+## Collection Management
+
+.PHONY: collection-build
+collection-build: collection-sync-version ## Build Ansible collection tarball
+	@printf "\n$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"
+	@printf "$(CYAN)║$(NC)  $(BOLD)Building Ansible Collection$(NC)                                 $(CYAN)║$(NC)\n"
+	@printf "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)\n\n"
+	ansible-galaxy collection build --force
+	@printf "\n$(GREEN)✓$(NC) Collection built: $(NAMESPACE)-$(COLLECTION_NAME)-$(VERSION).tar.gz\n\n"
+
+.PHONY: collection-install
+collection-install: collection-build ## Install collection locally
+	@printf "\n$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"
+	@printf "$(CYAN)║$(NC)  $(BOLD)Installing Collection Locally$(NC)                               $(CYAN)║$(NC)\n"
+	@printf "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)\n\n"
+	ansible-galaxy collection install $(NAMESPACE)-$(COLLECTION_NAME)-$(VERSION).tar.gz --force
+	@printf "\n$(GREEN)✓$(NC) Collection installed: $(NAMESPACE).$(COLLECTION_NAME)\n\n"
+
+.PHONY: collection-publish
+collection-publish: collection-build ## Publish collection to Ansible Galaxy
+	@printf "\n$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"
+	@printf "$(CYAN)║$(NC)  $(BOLD)Publishing to Ansible Galaxy$(NC)                                $(CYAN)║$(NC)\n"
+	@printf "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)\n\n"
+	@if [ -z "$$GALAXY_API_KEY" ]; then \
+		printf "$(RED)Error:$(NC) GALAXY_API_KEY environment variable is required.\n"; \
+		printf "$(CYAN)Get your API key from:$(NC) https://galaxy.ansible.com/me/preferences\n\n"; \
+		exit 1; \
+	fi
+	ansible-galaxy collection publish $(NAMESPACE)-$(COLLECTION_NAME)-$(VERSION).tar.gz --api-key $$GALAXY_API_KEY
+	@printf "\n$(GREEN)✓$(NC) Collection published to Galaxy!\n"
+	@printf "$(CYAN)View at:$(NC) https://galaxy.ansible.com/$(NAMESPACE)/$(COLLECTION_NAME)\n\n"
+
+.PHONY: collection-sync-version
+collection-sync-version: ## Sync version from version file to galaxy.yml
+	@sed -i 's/^version: .*/version: "$(VERSION)"/' galaxy.yml
+	@printf "$(GREEN)✓$(NC) galaxy.yml version synced to $(GREEN)$(VERSION)$(NC)\n"
+
+.PHONY: collection-clean
+collection-clean: ## Remove built collection tarballs
+	@rm -f $(NAMESPACE)-$(COLLECTION_NAME)-*.tar.gz
+	@printf "$(GREEN)✓$(NC) Cleaned collection tarballs\n"
 
 ## Version Management
 

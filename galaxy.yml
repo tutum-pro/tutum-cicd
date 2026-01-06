@@ -1,0 +1,43 @@
+# Ansible Collection: tutumpro.cicd
+# https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html
+---
+namespace: tutumpro
+name: cicd
+version: "1.0.0"
+readme: README.md
+authors:
+  - Tutum Pro Team
+
+description: |
+  Ansible collection for deploying Tutum Pro certificate management platform.
+  Includes roles for installing Tutum Engine, PostgreSQL, Docker Volume Plugin,
+  and Admin CLI.
+
+license:
+  - MIT
+
+tags:
+  - tutum
+  - certificates
+  - x509
+  - pki
+  - docker
+  - kubernetes
+
+dependencies: {}
+
+repository: https://github.com/tutum/tutum-cicd
+documentation: https://github.com/tutum/tutum-cicd/blob/main/README.md
+homepage: https://github.com/tutum/tutum-cicd
+issues: https://github.com/tutum/tutum-cicd/issues
+
+build_ignore:
+  - .git
+  - .gitignore
+  - .vscode
+  - .ansible
+  - .ansible_cache
+  - logs
+  - "*.tar.gz"
+  - inventory/docker.ini
+  - host_vars

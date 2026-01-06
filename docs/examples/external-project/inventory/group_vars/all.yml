@@ -1,0 +1,51 @@
+---
+# Tutum Pro Configuration for your project
+# Override default values from tutumpro.cicd collection
+
+# =============================================================================
+# Component Versions (optional - defaults are in the collection)
+# =============================================================================
+
+# docker_tutum_engine_version: "3.3.5"
+# docker_tutum_cli_version: "0.1.76"
+# docker_tutum_plugin_version: "2.1.6"
+# docker_tutum_postgres_version: "15-alpine"
+
+# =============================================================================
+# Security Configuration (IMPORTANT: Change for production!)
+# =============================================================================
+
+# Generate secure keys: openssl rand -base64 32 | head -c 32
+docker_tutum_master_key: "YOUR_SECURE_32_CHARACTER_KEY_HERE"
+docker_tutum_jwt_secret: "YOUR_SECURE_32_CHARACTER_JWT_KEY!"
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+
+docker_tutum_db_name: "tutum"
+docker_tutum_db_user: "tutum"
+docker_tutum_db_password: "{{ vault_db_password }}"
+docker_tutum_db_port: "5432"
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+
+docker_tutum_rest_port: "8080"
+docker_tutum_grpc_port: "9090"
+docker_tutum_engine_url: "localhost:9090"
+
+# =============================================================================
+# Storage
+# =============================================================================
+
+docker_tutum_data_dir: "/var/lib/tutum"
+docker_tutum_config_dir: "/etc/tutum"
+docker_tutum_volume_dir: "/var/lib/tutum/volumes"
+
+# =============================================================================
+# Logging
+# =============================================================================
+
+docker_tutum_log_level: "info"  # debug, info, warn, error

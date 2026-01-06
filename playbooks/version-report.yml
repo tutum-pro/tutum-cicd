@@ -15,7 +15,7 @@
   vars:
     # Expected versions from group_vars/all.yml
     _expected_cicd_version: "{{ cicd_version }}"
-    _expected_engine_version: "{{ tutum_engine_version }}"
+    _expected_engine_version: "{{ docker_tutum_engine_version }}"
     _expected_cli_version: "{{ cli_version }}"
     _expected_plugin_version: "{{ plugin_version }}"
     _expected_postgres_version: "{{ postgres_version }}"

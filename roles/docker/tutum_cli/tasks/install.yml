@@ -1,0 +1,68 @@
+---
+# Tutum Admin CLI Installation Tasks
+
+- name: Set CLI full name
+  ansible.builtin.set_fact:
+    _cli_full_name: "{{ docker_tutum_cli_image }}:{{ docker_tutum_cli_version }}"
+
+- name: Verify Docker is running
+  ansible.builtin.command: docker info
+  changed_when: false
+  register: _docker_info
+  failed_when: _docker_info.rc != 0
+
+- name: Pull Tutum Admin CLI image from registry
+  ansible.builtin.command: docker pull "{{ _cli_full_name }}"
+  register: _pull_result
+  changed_when: "'Downloaded' in _pull_result.stdout or 'Pull complete' in _pull_result.stdout"
+
+- name: Stop existing container if running
+  ansible.builtin.command: docker stop "{{ docker_tutum_cli_container_name }}"
+  failed_when: false
+  changed_when: true
+
+- name: Remove existing container
+  ansible.builtin.command: docker rm "{{ docker_tutum_cli_container_name }}"
+  failed_when: false
+  changed_when: true
+
+- name: Create Tutum Admin CLI container
+  ansible.builtin.shell:
+    cmd: |
+      docker create \
+        --name {{ docker_tutum_cli_container_name }} \
+        --network host \
+        --restart unless-stopped \
+        --label tutum-cicd.version={{ docker_tutum_cicd_version }} \
+        --label tutum-cicd.component=cli \
+        --label tutum-cicd.image={{ _cli_full_name }} \
+        -e TUTUM_ENGINE_URL={{ docker_tutum_engine_url }} \
+        -e TUTUM_ENGINE_REST_URL=http://{{ docker_tutum_engine_url.split(':')[0] }}:{{ docker_tutum_rest_port }} \
+        -e TUTUM_USE_TLS=false \
+        --entrypoint sh \
+        {{ _cli_full_name }} \
+        -c "while true; do sleep 86400; done"
+  changed_when: true
+
+- name: Start Tutum Admin CLI container
+  ansible.builtin.command: docker start "{{ docker_tutum_cli_container_name }}"
+  changed_when: true
+
+- name: Verify container is running
+  ansible.builtin.command: >
+    docker ps --filter "name={{ docker_tutum_cli_container_name }}" --format "{{ '{{' }}.Names{{ '}}' }}"
+  register: _container_check
+  changed_when: false
+  failed_when: docker_tutum_cli_container_name not in _container_check.stdout
+
+- name: Display installation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Admin CLI container installed successfully!"
+      - ""
+      - "Container: {{ docker_tutum_cli_container_name }}"
+      - "Image: {{ _cli_full_name }}"
+      - ""
+      - "Usage:"
+      - "  docker exec {{ docker_tutum_cli_container_name }} tutum-admin-cli --help"
+      - "  docker exec {{ docker_tutum_cli_container_name }} tutum-admin-cli cert list --server {{ docker_tutum_engine_url }}"

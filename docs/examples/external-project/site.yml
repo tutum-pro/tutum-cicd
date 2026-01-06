@@ -1,0 +1,25 @@
+---
+# Example: Install Tutum Pro using the collection
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml site.yml
+
+- name: Deploy Tutum Pro Platform (Docker)
+  hosts: all
+  become: true
+
+  roles:
+    # Install all components using collection roles
+    - role: tutumpro.cicd.docker.tutum_engine
+    - role: tutumpro.cicd.docker.tutum_plugin
+    - role: tutumpro.cicd.docker.tutum_cli
+
+  post_tasks:
+    - name: Show deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "Tutum Pro deployment completed!"
+          - ""
+          - "Access points:"
+          - "  REST API: http://{{ ansible_host }}:{{ docker_tutum_rest_port }}"
+          - "  gRPC API: {{ ansible_host }}:{{ docker_tutum_grpc_port }}"

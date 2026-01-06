@@ -24,7 +24,7 @@ cicd_version: "{{ lookup('file', playbook_dir + '/../version', errors='ignore') 
 # -----------------------------------------------------------------------------
 
 # Tutum Engine
-tutum_engine_version: "3.3.5"
+docker_tutum_engine_version: "3.3.5"
 
 # Tutum Admin CLI
 cli_version: "0.1.76"
@@ -48,11 +48,11 @@ plugin_image: "tutumpro/tutum-csi-driver-docker"
 # -----------------------------------------------------------------------------
 
 # Network
-# tutum_engine_url - used for tests and CLI (from host)
+# docker_tutum_engine_url - used for tests and CLI (from host)
 # tutum_engine_internal_url - used by plugin (plugin runs with --network host, so also uses localhost)
-tutum_engine_url: "localhost:9090"
-tutum_rest_port: "8080"
-tutum_grpc_port: "9090"
+docker_tutum_engine_url: "localhost:9090"
+docker_tutum_rest_port: "8080"
+docker_tutum_grpc_port: "9090"
 
 # Plugin URL (plugin uses --network host, so must use localhost)
 tutum_engine_internal_url: "localhost:9090"
@@ -65,19 +65,19 @@ db_port: "5432"
 
 # Security (IMPORTANT: Use fixed keys for test environments to avoid encryption mismatches)
 # These keys MUST be exactly 32 characters for AES-256 encryption
-tutum_master_key: "TutumTestMasterKey32Characters!"
-tutum_jwt_secret: "TutumTestJwtSecret32Characters!!"
+docker_tutum_master_key: "TutumTestMasterKey32Characters!"
+docker_tutum_jwt_secret: "TutumTestJwtSecret32Characters!!"
 
 # Plugin
 volume_dir: "/var/lib/tutum/volumes"
 log_level: "info"
 
 # Directories
-tutum_data_dir: "/var/lib/tutum"
-tutum_config_dir: "/etc/tutum"
+docker_tutum_data_dir: "/var/lib/tutum"
+docker_tutum_config_dir: "/etc/tutum"
 
 # Docker
-docker_network: "tutum-network"
+docker_tutum_network: "tutum-network"
 
 # -----------------------------------------------------------------------------
 # Container Names

@@ -1,0 +1,58 @@
+---
+# Tutum Engine Uninstallation Tasks
+
+- name: Check if Tutum Engine container exists
+  ansible.builtin.command: >
+    docker ps -a --filter name={{ docker_tutum_engine_container_name }} --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: _engine_exists
+  changed_when: false
+
+- name: Stop Tutum Engine container
+  ansible.builtin.command: docker stop {{ docker_tutum_engine_container_name }}
+  when: docker_tutum_engine_container_name in _engine_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove Tutum Engine container
+  ansible.builtin.command: docker rm {{ docker_tutum_engine_container_name }}
+  when: docker_tutum_engine_container_name in _engine_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Check if PostgreSQL container exists
+  ansible.builtin.command: >
+    docker ps -a --filter name={{ docker_tutum_postgres_container_name }} --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: _postgres_exists
+  changed_when: false
+
+- name: Stop PostgreSQL container
+  ansible.builtin.command: docker stop {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove PostgreSQL container
+  ansible.builtin.command: docker rm {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove Docker network
+  ansible.builtin.command: docker network rm {{ docker_tutum_network }}
+  failed_when: false
+  changed_when: true
+
+- name: Remove data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ docker_tutum_data_dir }}"
+    - "{{ docker_tutum_config_dir }}"
+  when: docker_tutum_engine_remove_data | bool
+
+- name: Display uninstallation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Engine uninstalled successfully!"
+      - "Data removed: {{ docker_tutum_engine_remove_data }}"

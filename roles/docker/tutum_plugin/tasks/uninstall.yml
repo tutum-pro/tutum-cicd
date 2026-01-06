@@ -1,0 +1,61 @@
+---
+# Tutum Docker Plugin Uninstallation Tasks
+
+- name: Set plugin full name
+  ansible.builtin.set_fact:
+    _plugin_full_name: "{{ docker_tutum_plugin_image }}:{{ docker_tutum_plugin_version }}"
+
+- name: Check if plugin is installed
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' | grep -q "^{{ docker_tutum_plugin_image }}"
+    executable: /bin/bash
+  register: _plugin_exists
+  changed_when: false
+  failed_when: false
+
+- name: Find volumes using the plugin
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      docker volume ls --filter driver={{ _plugin_full_name }} --format '{{ '{{' }}.Name{{ '}}' }}'
+    executable: /bin/bash
+  register: _plugin_volumes
+  changed_when: false
+  failed_when: false
+
+- name: Remove volumes using the plugin
+  ansible.builtin.command: docker volume rm -f "{{ item }}"
+  loop: "{{ _plugin_volumes.stdout_lines | default([]) }}"
+  when: _plugin_volumes.stdout_lines | default([]) | length > 0
+  failed_when: false
+  changed_when: true
+
+- name: Disable plugin
+  ansible.builtin.command: docker plugin disable "{{ _plugin_full_name }}" -f
+  when: _plugin_exists.rc == 0
+  failed_when: false
+  changed_when: true
+
+- name: Remove plugin
+  ansible.builtin.command: docker plugin rm "{{ _plugin_full_name }}" -f
+  when: _plugin_exists.rc == 0
+  failed_when: false
+  changed_when: true
+
+- name: Remove volume directory
+  ansible.builtin.file:
+    path: "{{ docker_tutum_volume_dir }}"
+    state: absent
+  when: docker_tutum_plugin_remove_volumes | bool
+
+- name: Display result
+  ansible.builtin.debug:
+    msg: "Tutum Docker Volume Plugin {{ _plugin_full_name }} has been removed."
+  when: _plugin_exists.rc == 0
+
+- name: Plugin not found
+  ansible.builtin.debug:
+    msg: "Plugin {{ _plugin_full_name }} was not installed."
+  when: _plugin_exists.rc != 0

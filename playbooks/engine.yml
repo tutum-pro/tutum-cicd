@@ -1,0 +1,11 @@
+---
+# Tutum Engine Installation Playbook (Docker)
+#
+# Usage:
+#   ansible-playbook tutumpro.cicd.engine
+
+- name: Install Tutum Engine (Docker)
+  hosts: all
+  become: true
+  roles:
+    - role: tutumpro.cicd.docker.tutum_engine

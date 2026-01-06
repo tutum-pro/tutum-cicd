@@ -23,11 +23,11 @@
   become: true
   vars:
     # All versions and defaults defined in inventory/group_vars/all.yml
-    # tutum_engine_url format: host:grpc_port (e.g., docker:9090)
-    _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
-    _tutum_engine_grpc_port: "{{ tutum_engine_url.split(':')[1] }}"
-    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port }}"
-    _tutum_grpc_url: "{{ tutum_engine_url }}"
+    # docker_tutum_engine_url format: host:grpc_port (e.g., docker:9090)
+    _tutum_engine_host: "{{ docker_tutum_engine_url.split(':')[0] }}"
+    _tutum_engine_grpc_port: "{{ docker_tutum_engine_url.split(':')[1] }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ docker_tutum_rest_port }}"
+    _tutum_grpc_url: "{{ docker_tutum_engine_url }}"
 
     # Plugin configuration
     _plugin_name: "{{ plugin_image }}"

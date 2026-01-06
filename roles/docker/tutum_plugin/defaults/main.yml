@@ -1,0 +1,22 @@
+---
+# Docker Plugin Role Defaults
+
+# Plugin version
+docker_tutum_plugin_version: "2.1.6"
+docker_tutum_plugin_image: "tutumpro/tutum-csi-driver-docker"
+
+# CI/CD version for labeling
+docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', errors='ignore') | default('0.0.0') }}"
+
+# Tutum Engine connection (plugin uses host network)
+docker_tutum_engine_url: "localhost:9090"
+
+# Plugin configuration
+docker_tutum_volume_dir: "/var/lib/tutum/volumes"
+docker_tutum_log_level: "info"
+
+# Action: install or uninstall
+docker_tutum_plugin_state: "present"
+
+# Uninstall options
+docker_tutum_plugin_remove_volumes: false

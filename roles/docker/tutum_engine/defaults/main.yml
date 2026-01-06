@@ -1,0 +1,43 @@
+---
+# Docker Engine Role Defaults
+# These can be overridden in your playbook or inventory
+
+# Component versions
+docker_tutum_engine_version: "3.3.5"
+docker_tutum_postgres_version: "15-alpine"
+
+# CI/CD version for labeling (auto-detected from collection)
+docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', errors='ignore') | default('0.0.0') }}"
+
+# Container names
+docker_tutum_engine_container_name: "tutum-engine"
+docker_tutum_postgres_container_name: "tutum-postgres"
+
+# Database configuration
+docker_tutum_db_name: "tutum"
+docker_tutum_db_user: "tutum"
+docker_tutum_db_password: "tutum"
+docker_tutum_db_port: "5432"
+
+# Security keys (IMPORTANT: Override these in production!)
+# These keys MUST be exactly 32 characters for AES-256 encryption
+docker_tutum_master_key: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+docker_tutum_jwt_secret: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+
+# Network configuration
+docker_tutum_rest_port: "8080"
+docker_tutum_grpc_port: "9090"
+docker_tutum_network: "tutum-network"
+
+# Logging
+docker_tutum_log_level: "info"
+
+# Directories
+docker_tutum_data_dir: "/var/lib/tutum"
+docker_tutum_config_dir: "/etc/tutum"
+
+# Action: install or uninstall
+docker_tutum_engine_state: "present"
+
+# Uninstall options
+docker_tutum_engine_remove_data: false

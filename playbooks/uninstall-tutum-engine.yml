@@ -13,9 +13,9 @@
   vars:
     # All defaults defined in inventory/group_vars/all.yml
     _remove_data: "{{ remove_data | default(false) }}"
-    _tutum_data_dir: "{{ tutum_data_dir }}"
-    _tutum_config_dir: "{{ tutum_config_dir }}"
-    _docker_network: "{{ docker_network }}"
+    _docker_tutum_data_dir: "{{ docker_tutum_data_dir }}"
+    _docker_tutum_config_dir: "{{ docker_tutum_config_dir }}"
+    _docker_tutum_network: "{{ docker_tutum_network }}"
 
   tasks:
     - name: Stop Tutum Engine container
@@ -39,7 +39,7 @@
       changed_when: true
 
     - name: Remove Docker network
-      ansible.builtin.command: docker network rm {{ _docker_network }}
+      ansible.builtin.command: docker network rm {{ _docker_tutum_network }}
       failed_when: false
       changed_when: true
 
@@ -48,8 +48,8 @@
         path: "{{ item }}"
         state: absent
       loop:
-        - "{{ _tutum_data_dir }}"
-        - "{{ _tutum_config_dir }}"
+        - "{{ _docker_tutum_data_dir }}"
+        - "{{ _docker_tutum_config_dir }}"
       when: _remove_data | bool
 
     - name: Display result
@@ -59,10 +59,10 @@
 
           {% if _remove_data | bool %}
           Data directories have been removed:
-            - {{ _tutum_data_dir }}
-            - {{ _tutum_config_dir }}
+            - {{ _docker_tutum_data_dir }}
+            - {{ _docker_tutum_config_dir }}
           {% else %}
           Data directories preserved (use -e remove_data=true to delete):
-            - {{ _tutum_data_dir }}
-            - {{ _tutum_config_dir }}
+            - {{ _docker_tutum_data_dir }}
+            - {{ _docker_tutum_config_dir }}
           {% endif %}

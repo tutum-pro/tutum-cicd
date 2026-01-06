@@ -1,0 +1,13 @@
+---
+# Ansible Galaxy requirements for external project
+# Install with: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  # Install from Galaxy (after publishing)
+  - name: tutumpro.cicd
+    version: ">=1.0.0"
+
+  # Or install from git (before publishing to Galaxy)
+  # - name: https://github.com/tutum/tutum-cicd.git
+  #   type: git
+  #   version: main

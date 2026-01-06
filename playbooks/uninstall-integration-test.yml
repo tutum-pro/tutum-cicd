@@ -13,8 +13,8 @@
   become: true
   vars:
     # All defaults defined in inventory/group_vars/all.yml
-    _tutum_engine_host: "{{ tutum_engine_url.split(':')[0] }}"
-    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ tutum_rest_port }}"
+    _tutum_engine_host: "{{ docker_tutum_engine_url.split(':')[0] }}"
+    _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ docker_tutum_rest_port }}"
 
     # Test data - defined in inventory/group_vars/all.yml
     _test_namespace: "{{ test_namespace }}"

@@ -53,6 +53,8 @@ ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.uninstall
 
 ### Using Roles in Your Playbook
 
+**With embedded PostgreSQL (default):**
+
 ```yaml
 # site.yml
 - name: Deploy Tutum Pro
@@ -61,6 +63,27 @@ ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.uninstall
 
   vars:
     docker_tutum_engine_version: "3.3.5"
+    docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
+    docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
+
+  roles:
+    - role: tutum_pro.cicd.docker.tutum_postgres
+    - role: tutum_pro.cicd.docker.tutum_engine
+    - role: tutum_pro.cicd.docker.tutum_plugin
+    - role: tutum_pro.cicd.docker.tutum_cli
+```
+
+**With external PostgreSQL:**
+
+```yaml
+# site.yml
+- name: Deploy Tutum Pro
+  hosts: docker_servers
+  become: true
+
+  vars:
+    docker_tutum_engine_version: "3.3.5"
+    docker_tutum_external_db_url: "postgres://tutum:password@db.example.com:5432/tutum?sslmode=require"
     docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
     docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
 
@@ -78,17 +101,32 @@ For deployment on Docker hosts. Located in `roles/docker/`.
 
 All variables use `docker_tutum_` prefix.
 
+#### tutum_pro.cicd.docker.tutum_postgres
+
+Installs PostgreSQL database for Tutum Engine.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `docker_tutum_postgres_version` | `15-alpine` | PostgreSQL version |
+| `docker_tutum_postgres_container_name` | `tutum-postgres` | Container name |
+| `docker_tutum_db_name` | `tutum` | Database name |
+| `docker_tutum_db_user` | `tutum` | Database user |
+| `docker_tutum_db_password` | `tutum` | Database password |
+| `docker_tutum_db_port` | `5432` | PostgreSQL port |
+| `docker_tutum_postgres_state` | `present` | `present` or `absent` |
+| `docker_tutum_postgres_remove_data` | `false` | Remove data on uninstall |
+
 #### tutum_pro.cicd.docker.tutum_engine
 
-Installs Tutum Engine with PostgreSQL database.
+Installs Tutum Engine. Supports embedded PostgreSQL (via `tutum_postgres` role) or external database.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `docker_tutum_engine_version` | `3.3.5` | Tutum Engine version |
-| `docker_tutum_postgres_version` | `15-alpine` | PostgreSQL version |
-| `docker_tutum_db_name` | `tutum` | Database name |
-| `docker_tutum_db_user` | `tutum` | Database user |
-| `docker_tutum_db_password` | `tutum` | Database password |
+| `docker_tutum_external_db_url` | `""` | External PostgreSQL URL (skips embedded DB) |
+| `docker_tutum_db_name` | `tutum` | Database name (embedded mode) |
+| `docker_tutum_db_user` | `tutum` | Database user (embedded mode) |
+| `docker_tutum_db_password` | `tutum` | Database password (embedded mode) |
 | `docker_tutum_master_key` | (generated) | 32-char AES-256 encryption key |
 | `docker_tutum_jwt_secret` | (generated) | 32-char JWT secret |
 | `docker_tutum_rest_port` | `8080` | REST API port |
@@ -195,7 +233,8 @@ tutum-cicd/
 ├── Makefile                   # Build and deployment tasks
 ├── roles/
 │   ├── docker/               # Docker platform roles (docker_tutum_* vars)
-│   │   ├── tutum_engine/     # Engine + PostgreSQL
+│   │   ├── tutum_postgres/   # PostgreSQL database
+│   │   ├── tutum_engine/     # Tutum Engine (+ migrations)
 │   │   ├── tutum_plugin/     # Volume Plugin
 │   │   ├── tutum_cli/        # Admin CLI
 │   │   └── tutum_report/     # Version report

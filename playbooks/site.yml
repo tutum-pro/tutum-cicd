@@ -12,6 +12,10 @@
   hosts: all
   become: true
   roles:
+    # PostgreSQL - skip if external database is configured
+    - role: tutum_pro.cicd.docker.tutum_postgres
+      when: docker_tutum_external_db_url | default('') | length == 0
+
     - role: tutum_pro.cicd.docker.tutum_engine
     - role: tutum_pro.cicd.docker.tutum_plugin
     - role: tutum_pro.cicd.docker.tutum_cli

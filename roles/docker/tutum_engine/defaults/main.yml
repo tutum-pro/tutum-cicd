@@ -14,6 +14,12 @@ docker_tutum_engine_container_name: "tutum-engine"
 docker_tutum_postgres_container_name: "tutum-postgres"
 
 # Database configuration
+# If docker_tutum_external_db_url is set, external PostgreSQL will be used
+# and tutum_postgres role will be skipped
+# Format: postgres://user:password@host:port/dbname?sslmode=disable
+docker_tutum_external_db_url: ""
+
+# These are used for embedded PostgreSQL (when docker_tutum_external_db_url is empty)
 docker_tutum_db_name: "tutum"
 docker_tutum_db_user: "tutum"
 docker_tutum_db_password: "tutum"

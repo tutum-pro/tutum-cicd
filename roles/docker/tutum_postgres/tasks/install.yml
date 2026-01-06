@@ -1,0 +1,97 @@
+---
+# Tutum PostgreSQL Installation Tasks
+
+# ==================== Prerequisites ====================
+- name: Verify Docker is running
+  ansible.builtin.command: docker info
+  changed_when: false
+  register: _docker_info
+  failed_when: _docker_info.rc != 0
+
+- name: Create Tutum data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ docker_tutum_data_dir }}"
+    - "{{ docker_tutum_data_dir }}/postgres"
+
+# ==================== Docker Network ====================
+- name: Create Docker network
+  ansible.builtin.command: docker network create {{ docker_tutum_network }}
+  register: _network_create
+  changed_when: _network_create.rc == 0
+  failed_when: _network_create.rc != 0 and 'already exists' not in _network_create.stderr
+
+# ==================== PostgreSQL ====================
+- name: Check if PostgreSQL container exists
+  ansible.builtin.command: >
+    docker ps -a --filter name={{ docker_tutum_postgres_container_name }} --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: _postgres_exists
+  changed_when: false
+
+- name: Stop existing PostgreSQL container
+  ansible.builtin.command: docker stop {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove existing PostgreSQL container
+  ansible.builtin.command: docker rm {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Pull PostgreSQL image
+  ansible.builtin.command: docker pull postgres:{{ docker_tutum_postgres_version }}
+  register: _pull_postgres
+  changed_when: "'Downloaded' in _pull_postgres.stdout or 'Pull complete' in _pull_postgres.stdout"
+
+- name: Start PostgreSQL container
+  ansible.builtin.command: >
+    docker run -d
+    --name {{ docker_tutum_postgres_container_name }}
+    --network {{ docker_tutum_network }}
+    --label tutum-cicd.version={{ docker_tutum_cicd_version }}
+    --label tutum-cicd.component=postgres
+    --label tutum-cicd.image=postgres:{{ docker_tutum_postgres_version }}
+    -e POSTGRES_DB={{ docker_tutum_db_name }}
+    -e POSTGRES_USER={{ docker_tutum_db_user }}
+    -e POSTGRES_PASSWORD={{ docker_tutum_db_password }}
+    -e POSTGRES_INITDB_ARGS="--encoding=UTF8"
+    -v {{ docker_tutum_data_dir }}/postgres:/var/lib/postgresql/data
+    -p {{ docker_tutum_db_port }}:5432
+    --health-cmd="pg_isready -U {{ docker_tutum_db_user }}"
+    --health-interval=10s
+    --health-timeout=5s
+    --health-retries=5
+    --restart unless-stopped
+    postgres:{{ docker_tutum_postgres_version }}
+  changed_when: true
+
+- name: Wait for PostgreSQL to be healthy
+  ansible.builtin.command: >
+    docker inspect --format='{{ '{{' }}.State.Health.Status{{ '}}' }}' {{ docker_tutum_postgres_container_name }}
+  register: _pg_health
+  until: _pg_health.stdout == 'healthy'
+  retries: 30
+  delay: 2
+  changed_when: false
+
+# ==================== Set facts for dependent roles ====================
+- name: Set PostgreSQL connection facts
+  ansible.builtin.set_fact:
+    _docker_tutum_db_host: "{{ docker_tutum_postgres_container_name }}"
+    _docker_tutum_db_url: "postgres://{{ docker_tutum_db_user }}:{{ docker_tutum_db_password }}@{{ docker_tutum_postgres_container_name }}:5432/{{ docker_tutum_db_name }}?sslmode=disable"
+
+- name: Display PostgreSQL installation result
+  ansible.builtin.debug:
+    msg:
+      - "PostgreSQL installed successfully!"
+      - ""
+      - "Connection details:"
+      - "  - Host: {{ docker_tutum_postgres_container_name }}"
+      - "  - Port: {{ docker_tutum_db_port }}"
+      - "  - Database: {{ docker_tutum_db_name }}"
+      - "  - User: {{ docker_tutum_db_user }}"

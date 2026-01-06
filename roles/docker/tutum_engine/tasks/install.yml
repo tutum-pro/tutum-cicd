@@ -15,7 +15,6 @@
     mode: '0755'
   loop:
     - "{{ docker_tutum_data_dir }}"
-    - "{{ docker_tutum_data_dir }}/postgres"
     - "{{ docker_tutum_config_dir }}"
     - "{{ docker_tutum_config_dir }}/migrations"
 
@@ -26,53 +25,35 @@
   changed_when: _network_create.rc == 0
   failed_when: _network_create.rc != 0 and 'already exists' not in _network_create.stderr
 
-# ==================== PostgreSQL ====================
-- name: Check if PostgreSQL container exists
-  ansible.builtin.command: >
-    docker ps -a --filter name={{ docker_tutum_postgres_container_name }} --format '{{ '{{' }}.Names{{ '}}' }}'
-  register: _postgres_exists
-  changed_when: false
+# ==================== Database Connection Setup ====================
+- name: Set database URL for external PostgreSQL
+  ansible.builtin.set_fact:
+    _docker_tutum_db_url: "{{ docker_tutum_external_db_url }}"
+  when: docker_tutum_external_db_url | length > 0
 
-- name: Stop existing PostgreSQL container
-  ansible.builtin.command: docker stop {{ docker_tutum_postgres_container_name }}
-  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
-  failed_when: false
-  changed_when: true
+- name: Set database URL for embedded PostgreSQL
+  ansible.builtin.set_fact:
+    _docker_tutum_db_url: "postgres://{{ docker_tutum_db_user }}:{{ docker_tutum_db_password }}@{{ docker_tutum_postgres_container_name }}:5432/{{ docker_tutum_db_name }}?sslmode=disable"
+  when: docker_tutum_external_db_url | length == 0
 
-- name: Remove existing PostgreSQL container
-  ansible.builtin.command: docker rm {{ docker_tutum_postgres_container_name }}
-  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
-  failed_when: false
-  changed_when: true
+# Parse database URL for migrations
+- name: Parse database URL components
+  ansible.builtin.set_fact:
+    _db_user: "{{ _docker_tutum_db_url | regex_replace('^postgres://([^:]+):.*', '\\1') }}"
+    _db_password: "{{ _docker_tutum_db_url | regex_replace('^postgres://[^:]+:([^@]+)@.*', '\\1') }}"
+    _db_host: "{{ _docker_tutum_db_url | regex_replace('^postgres://[^@]+@([^:/]+).*', '\\1') }}"
+    _db_port: "{{ _docker_tutum_db_url | regex_replace('^postgres://[^@]+@[^:]+:([0-9]+)/.*', '\\1') }}"
+    _db_name: "{{ _docker_tutum_db_url | regex_replace('^postgres://[^/]+/([^?]+).*', '\\1') }}"
 
-- name: Pull PostgreSQL image
-  ansible.builtin.command: docker pull postgres:{{ docker_tutum_postgres_version }}
-  register: _pull_postgres
-  changed_when: "'Downloaded' in _pull_postgres.stdout or 'Pull complete' in _pull_postgres.stdout"
+- name: Display database connection info
+  ansible.builtin.debug:
+    msg:
+      - "Database mode: {{ 'External' if docker_tutum_external_db_url | length > 0 else 'Embedded (tutum_postgres)' }}"
+      - "Database host: {{ _db_host }}"
+      - "Database name: {{ _db_name }}"
 
-- name: Start PostgreSQL container
-  ansible.builtin.command: >
-    docker run -d
-    --name {{ docker_tutum_postgres_container_name }}
-    --network {{ docker_tutum_network }}
-    --label tutum-cicd.version={{ docker_tutum_cicd_version }}
-    --label tutum-cicd.component=postgres
-    --label tutum-cicd.image=postgres:{{ docker_tutum_postgres_version }}
-    -e POSTGRES_DB={{ docker_tutum_db_name }}
-    -e POSTGRES_USER={{ docker_tutum_db_user }}
-    -e POSTGRES_PASSWORD={{ docker_tutum_db_password }}
-    -e POSTGRES_INITDB_ARGS="--encoding=UTF8"
-    -v {{ docker_tutum_data_dir }}/postgres:/var/lib/postgresql/data
-    -p {{ docker_tutum_db_port }}:5432
-    --health-cmd="pg_isready -U {{ docker_tutum_db_user }}"
-    --health-interval=10s
-    --health-timeout=5s
-    --health-retries=5
-    --restart unless-stopped
-    postgres:{{ docker_tutum_postgres_version }}
-  changed_when: true
-
-- name: Wait for PostgreSQL to be healthy
+# ==================== Wait for Database ====================
+- name: Wait for database to be reachable (embedded)
   ansible.builtin.command: >
     docker inspect --format='{{ '{{' }}.State.Health.Status{{ '}}' }}' {{ docker_tutum_postgres_container_name }}
   register: _pg_health
@@ -80,6 +61,14 @@
   retries: 30
   delay: 2
   changed_when: false
+  when: docker_tutum_external_db_url | length == 0
+
+- name: Wait for database to be reachable (external)
+  ansible.builtin.wait_for:
+    host: "{{ _db_host }}"
+    port: "{{ _db_port | int }}"
+    timeout: 60
+  when: docker_tutum_external_db_url | length > 0
 
 # ==================== Database Schema & Migrations ====================
 - name: Copy migration files
@@ -88,11 +77,30 @@
     dest: "{{ docker_tutum_config_dir }}/migrations/"
     mode: '0644'
 
+# Determine how to run psql commands
+- name: Set psql command for embedded PostgreSQL
+  ansible.builtin.set_fact:
+    _psql_cmd: "docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ _db_user }} -d {{ _db_name }}"
+    _psql_cmd_stdin: "docker exec -i {{ docker_tutum_postgres_container_name }} psql -U {{ _db_user }} -d {{ _db_name }}"
+  when: docker_tutum_external_db_url | length == 0
+
+- name: Set psql command for external PostgreSQL
+  ansible.builtin.set_fact:
+    _psql_cmd: "PGPASSWORD='{{ _db_password }}' psql -h {{ _db_host }} -p {{ _db_port }} -U {{ _db_user }} -d {{ _db_name }}"
+    _psql_cmd_stdin: "PGPASSWORD='{{ _db_password }}' psql -h {{ _db_host }} -p {{ _db_port }} -U {{ _db_user }} -d {{ _db_name }}"
+  when: docker_tutum_external_db_url | length > 0
+
+- name: Ensure psql client is available for external DB
+  ansible.builtin.package:
+    name: postgresql-client
+    state: present
+  when: docker_tutum_external_db_url | length > 0
+
 - name: Create migrations tracking table
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} -c "
+      {{ _psql_cmd }} -c "
         CREATE TABLE IF NOT EXISTS schema_migrations (
           id SERIAL PRIMARY KEY,
           version VARCHAR(255) NOT NULL UNIQUE,
@@ -107,7 +115,7 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} -t -c "
+      {{ _psql_cmd }} -t -c "
         SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'certificates';
       "
     executable: /bin/bash
@@ -118,8 +126,7 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      docker exec -i {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} \
-        < {{ docker_tutum_config_dir }}/migrations/schema.sql
+      {{ _psql_cmd_stdin }} < {{ docker_tutum_config_dir }}/migrations/schema.sql
     executable: /bin/bash
   when: _schema_check.stdout | trim | int == 0
   changed_when: true
@@ -128,7 +135,7 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} -c "
+      {{ _psql_cmd }} -c "
         INSERT INTO schema_migrations (version, description)
         VALUES ('000_schema', 'Initial database schema')
         ON CONFLICT (version) DO NOTHING;
@@ -150,13 +157,13 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      APPLIED=$(docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} -t -c \
+      APPLIED=$({{ _psql_cmd }} -t -c \
         "SELECT COUNT(*) FROM schema_migrations WHERE version = '{{ _migration_version }}' OR version = '{{ _migration_name }}';" | tr -d ' ')
 
       if [ "$APPLIED" = "0" ]; then
         echo "Applying migration: {{ _migration_name }}"
-        docker exec -i {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} < {{ item.path }}
-        docker exec {{ docker_tutum_postgres_container_name }} psql -U {{ docker_tutum_db_user }} -d {{ docker_tutum_db_name }} -c \
+        {{ _psql_cmd_stdin }} < {{ item.path }}
+        {{ _psql_cmd }} -c \
           "INSERT INTO schema_migrations (version, description) \
            VALUES ('{{ _migration_version }}', 'Migration {{ _migration_name }}');"
         echo "CHANGED"
@@ -206,7 +213,7 @@
     --label tutum-cicd.component=engine
     --label tutum-cicd.image=tutumpro/tutum-engine:{{ docker_tutum_engine_version }}
     --group-add {{ _docker_socket_gid.stdout | trim }}
-    -e DATABASE_URL=postgres://{{ docker_tutum_db_user }}:{{ docker_tutum_db_password }}@{{ docker_tutum_postgres_container_name }}:{{ docker_tutum_db_port }}/{{ docker_tutum_db_name }}?sslmode=disable
+    -e DATABASE_URL={{ _docker_tutum_db_url }}
     -e DATABASE_MAX_OPEN_CONNS=25
     -e DATABASE_MAX_IDLE_CONNS=5
     -e DATABASE_CONN_MAX_LIFETIME=5m
@@ -256,8 +263,9 @@
     msg:
       - "Tutum Engine installed successfully!"
       - ""
+      - "Database: {{ 'External' if docker_tutum_external_db_url | length > 0 else 'Embedded (localhost:' + docker_tutum_db_port + ')' }}"
+      - ""
       - "Services:"
-      - "  - PostgreSQL: localhost:{{ docker_tutum_db_port }}"
       - "  - Tutum Engine REST API: http://localhost:{{ docker_tutum_rest_port }}"
       - "  - Tutum Engine gRPC API: localhost:{{ docker_tutum_grpc_port }}"
       - ""

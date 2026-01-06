@@ -1,0 +1,29 @@
+---
+# Docker PostgreSQL Role Defaults
+
+# PostgreSQL version
+docker_tutum_postgres_version: "15-alpine"
+
+# CI/CD version for labeling
+docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', errors='ignore') | default('0.0.0') }}"
+
+# Container name
+docker_tutum_postgres_container_name: "tutum-postgres"
+
+# Database configuration
+docker_tutum_db_name: "tutum"
+docker_tutum_db_user: "tutum"
+docker_tutum_db_password: "tutum"
+docker_tutum_db_port: "5432"
+
+# Network
+docker_tutum_network: "tutum-network"
+
+# Data directory
+docker_tutum_data_dir: "/var/lib/tutum"
+
+# Action: present or absent
+docker_tutum_postgres_state: "present"
+
+# Uninstall options
+docker_tutum_postgres_remove_data: false

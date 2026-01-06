@@ -1,0 +1,32 @@
+---
+# Tutum PostgreSQL Uninstallation Tasks
+
+- name: Check if PostgreSQL container exists
+  ansible.builtin.command: >
+    docker ps -a --filter name={{ docker_tutum_postgres_container_name }} --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: _postgres_exists
+  changed_when: false
+
+- name: Stop PostgreSQL container
+  ansible.builtin.command: docker stop {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove PostgreSQL container
+  ansible.builtin.command: docker rm {{ docker_tutum_postgres_container_name }}
+  when: docker_tutum_postgres_container_name in _postgres_exists.stdout
+  failed_when: false
+  changed_when: true
+
+- name: Remove PostgreSQL data directory
+  ansible.builtin.file:
+    path: "{{ docker_tutum_data_dir }}/postgres"
+    state: absent
+  when: docker_tutum_postgres_remove_data | bool
+
+- name: Display uninstallation result
+  ansible.builtin.debug:
+    msg:
+      - "PostgreSQL uninstalled successfully!"
+      - "Data removed: {{ docker_tutum_postgres_remove_data }}"

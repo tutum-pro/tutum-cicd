@@ -22,3 +22,9 @@
     - role: tutum_pro.cicd.docker.tutum_engine
       vars:
         docker_tutum_engine_state: "absent"
+
+    # PostgreSQL - skip if external database was used
+    - role: tutum_pro.cicd.docker.tutum_postgres
+      vars:
+        docker_tutum_postgres_state: "absent"
+      when: docker_tutum_external_db_url | default('') | length == 0

@@ -111,10 +111,14 @@ bump: ## Bump version (TYPE=f|c|b). f=fix (patch), c=compatible (minor), b=break
 	esac; \
 	NEW_VERSION="$$MAJOR.$$MINOR.$$PATCH"; \
 	echo "$$NEW_VERSION" > version; \
+	sed -i 's/^version: .*/version: "'"$$NEW_VERSION"'"/' galaxy.yml; \
 	printf "\n$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)\n"; \
 	printf "$(CYAN)║$(NC)  $(BOLD)$(GREEN)✓ Version Bumped Successfully$(NC)                              $(CYAN)║$(NC)\n"; \
 	printf "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)\n\n"; \
-	printf "  $(YELLOW)$$CURRENT$(NC)  $(BLUE)→$(NC)  $(GREEN)$$NEW_VERSION$(NC)\n\n"
+	printf "  $(YELLOW)$$CURRENT$(NC)  $(BLUE)→$(NC)  $(GREEN)$$NEW_VERSION$(NC)\n"; \
+	printf "\n$(CYAN)Updated files:$(NC)\n"; \
+	printf "  $(GREEN)•$(NC) version\n"; \
+	printf "  $(GREEN)•$(NC) galaxy.yml\n\n"
 
 .PHONY: tag
 tag: ## Create git tag from version file (requires clean committed state)

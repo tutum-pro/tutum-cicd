@@ -26,10 +26,10 @@ tags:
 
 dependencies: {}
 
-repository: https://github.com/tutum/tutum-cicd
-documentation: https://github.com/tutum/tutum-cicd/blob/main/README.md
-homepage: https://github.com/tutum/tutum-cicd
-issues: https://github.com/tutum/tutum-cicd/issues
+repository: https://github.com/tutum-pro/tutum-cicd
+documentation: https://www.tutum-pro.io
+homepage: https://github.com/tutum-pro/tutum-cicd
+issues: https://github.com/tutum-pro/tutum-cicd/issues
 
 build_ignore:
   - .git

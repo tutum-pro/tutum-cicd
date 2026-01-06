@@ -2,14 +2,14 @@
 
 Ansible collection for deploying Tutum Pro certificate management platform.
 
-**Collection:** `tutumpro.cicd`
+**Collection:** `tutum_pro.cicd`
 
 ## Installation
 
 ### From Ansible Galaxy
 
 ```bash
-ansible-galaxy collection install tutumpro.cicd
+ansible-galaxy collection install tutum_pro.cicd
 ```
 
 ### From Git
@@ -23,7 +23,7 @@ ansible-galaxy collection install git+https://github.com/tutum/tutum-cicd.git
 ```yaml
 # requirements.yml
 collections:
-  - name: tutumpro.cicd
+  - name: tutum_pro.cicd
     version: ">=1.0.0"
 ```
 
@@ -37,18 +37,18 @@ ansible-galaxy collection install -r requirements.yml
 
 ```bash
 # Install all components (Docker)
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.site
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.site
 
 # Install individual components
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.engine
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.plugin
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.cli
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.engine
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.plugin
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.cli
 
 # Show version report
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.report
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.report
 
 # Uninstall all
-ansible-playbook -i inventory/hosts.yml tutumpro.cicd.uninstall
+ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.uninstall
 ```
 
 ### Using Roles in Your Playbook
@@ -65,9 +65,9 @@ ansible-playbook -i inventory/hosts.yml tutumpro.cicd.uninstall
     docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
 
   roles:
-    - role: tutumpro.cicd.docker.tutum_engine
-    - role: tutumpro.cicd.docker.tutum_plugin
-    - role: tutumpro.cicd.docker.tutum_cli
+    - role: tutum_pro.cicd.docker.tutum_engine
+    - role: tutum_pro.cicd.docker.tutum_plugin
+    - role: tutum_pro.cicd.docker.tutum_cli
 ```
 
 ## Roles
@@ -78,7 +78,7 @@ For deployment on Docker hosts. Located in `roles/docker/`.
 
 All variables use `docker_tutum_` prefix.
 
-#### tutumpro.cicd.docker.tutum_engine
+#### tutum_pro.cicd.docker.tutum_engine
 
 Installs Tutum Engine with PostgreSQL database.
 
@@ -97,7 +97,7 @@ Installs Tutum Engine with PostgreSQL database.
 | `docker_tutum_engine_state` | `present` | `present` or `absent` |
 | `docker_tutum_engine_remove_data` | `false` | Remove data on uninstall |
 
-#### tutumpro.cicd.docker.tutum_plugin
+#### tutum_pro.cicd.docker.tutum_plugin
 
 Installs Tutum Docker Volume Plugin.
 
@@ -110,7 +110,7 @@ Installs Tutum Docker Volume Plugin.
 | `docker_tutum_plugin_state` | `present` | `present` or `absent` |
 | `docker_tutum_plugin_remove_volumes` | `false` | Remove volumes on uninstall |
 
-#### tutumpro.cicd.docker.tutum_cli
+#### tutum_pro.cicd.docker.tutum_cli
 
 Installs Tutum Admin CLI container.
 
@@ -121,7 +121,7 @@ Installs Tutum Admin CLI container.
 | `docker_tutum_engine_url` | `localhost:9090` | Tutum Engine gRPC URL |
 | `docker_tutum_cli_state` | `present` | `present` or `absent` |
 
-#### tutumpro.cicd.docker.tutum_report
+#### tutum_pro.cicd.docker.tutum_report
 
 Generates version report of installed Docker components.
 
@@ -130,8 +130,8 @@ Generates version report of installed Docker components.
 For deployment on Kubernetes clusters. Will be located in `roles/k8s/`.
 Variables will use `k8s_tutum_` prefix.
 
-- `tutumpro.cicd.k8s.tutum_engine` - Tutum Engine Helm chart deployment
-- `tutumpro.cicd.k8s.tutum_csi_driver` - Kubernetes CSI driver for certificates
+- `tutum_pro.cicd.k8s.tutum_engine` - Tutum Engine Helm chart deployment
+- `tutum_pro.cicd.k8s.tutum_csi_driver` - Kubernetes CSI driver for certificates
 
 ## Example: External Project
 

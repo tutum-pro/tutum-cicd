@@ -2,10 +2,10 @@
 # Tutum Admin CLI Installation Playbook (Docker)
 #
 # Usage:
-#   ansible-playbook tutumpro.cicd.cli
+#   ansible-playbook tutum_pro.cicd.cli
 
 - name: Install Tutum Admin CLI (Docker)
   hosts: all
   become: true
   roles:
-    - role: tutumpro.cicd.docker.tutum_cli
+    - role: tutum_pro.cicd.docker.tutum_cli

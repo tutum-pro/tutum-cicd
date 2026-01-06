@@ -1,7 +1,7 @@
-# Ansible Collection: tutumpro.cicd
+# Ansible Collection: tutum_pro.cicd
 # https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html
 ---
-namespace: tutumpro
+namespace: tutum_pro
 name: cicd
 version: "1.0.0"
 readme: README.md

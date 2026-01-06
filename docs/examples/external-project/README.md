@@ -1,6 +1,6 @@
-# External Project Using tutumpro.cicd Collection
+# External Project Using tutum_pro.cicd Collection
 
-This is an example of how to use the `tutumpro.cicd` Ansible collection
+This is an example of how to use the `tutum_pro.cicd` Ansible collection
 in your own project.
 
 ## Quick Start
@@ -9,7 +9,7 @@ in your own project.
 
    ```bash
    # From Ansible Galaxy (after publishing)
-   ansible-galaxy collection install tutumpro.cicd
+   ansible-galaxy collection install tutum_pro.cicd
 
    # Or from Git
    ansible-galaxy collection install git+https://github.com/tutum/tutum-cicd.git
@@ -60,10 +60,10 @@ You can also use the roles directly in your playbooks:
     tutum_log_level: "debug"
 
   roles:
-    - role: tutumpro.cicd.docker.tutum_engine
-    - role: tutumpro.cicd.docker.tutum_plugin
+    - role: tutum_pro.cicd.docker.tutum_engine
+    - role: tutum_pro.cicd.docker.tutum_plugin
       vars:
-        tutum_engine_url: "{{ ansible_host }}:9090"
+        docker_tutum_engine_url: "{{ ansible_host }}:9090"
 ```
 
 ## Available Variables
@@ -76,6 +76,6 @@ In the future, roles in `k8s` namespace will be available for Kubernetes deploym
 
 ```yaml
 roles:
-  - role: tutumpro.cicd.k8s.tutum_engine
-  - role: tutumpro.cicd.k8s.tutum_csi_driver
+  - role: tutum_pro.cicd.k8s.tutum_engine
+  - role: tutum_pro.cicd.k8s.tutum_csi_driver
 ```

@@ -1,4 +1,4 @@
-# Makefile for external project using tutumpro.cicd collection
+# Makefile for external project using tutum_pro.cicd collection
 
 INVENTORY ?= inventory/hosts.yml
 EXTRA_VARS ?=
@@ -10,7 +10,7 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Setup:"
-	@echo "  install-collection  Install tutumpro.cicd collection from Galaxy"
+	@echo "  install-collection  Install tutum_pro.cicd collection from Galaxy"
 	@echo "  install-from-git    Install collection from Git repository"
 	@echo ""
 	@echo "Deployment:"
@@ -42,29 +42,29 @@ deploy:
 
 .PHONY: deploy-engine
 deploy-engine:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.engine $(EXTRA_VARS)
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.engine $(EXTRA_VARS)
 
 .PHONY: deploy-plugin
 deploy-plugin:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.plugin $(EXTRA_VARS)
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.plugin $(EXTRA_VARS)
 
 .PHONY: deploy-cli
 deploy-cli:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.cli $(EXTRA_VARS)
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.cli $(EXTRA_VARS)
 
 # ==================== Management ====================
 
 .PHONY: report
 report:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.report $(EXTRA_VARS)
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.report $(EXTRA_VARS)
 
 .PHONY: uninstall
 uninstall:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.uninstall $(EXTRA_VARS)
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.uninstall $(EXTRA_VARS)
 
 .PHONY: uninstall-data
 uninstall-data:
-	ansible-playbook -i $(INVENTORY) tutumpro.cicd.uninstall \
+	ansible-playbook -i $(INVENTORY) tutum_pro.cicd.uninstall \
 		-e tutum_engine_remove_data=true \
 		-e tutum_plugin_remove_volumes=true \
 		$(EXTRA_VARS)

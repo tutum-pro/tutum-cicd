@@ -5,7 +5,7 @@
 #   ansible-playbook -i inventory install-plugin.yml
 #
 # Variables:
-#   plugin_name: tutumpro/tutum-csi-driver-docker
+#   plugin_image: tutumpro/tutum-csi-driver-docker
 #   plugin_version: 2.1.5
 #   docker_tutum_engine_url: localhost:9090
 #   volume_dir: /var/lib/tutum/volumes

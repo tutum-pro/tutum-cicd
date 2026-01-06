@@ -4,7 +4,7 @@
 
 collections:
   # Install from Galaxy (after publishing)
-  - name: tutumpro.cicd
+  - name: tutum_pro.cicd
     version: ">=1.0.0"
 
   # Or install from git (before publishing to Galaxy)

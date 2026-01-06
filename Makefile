@@ -34,7 +34,7 @@ help: ## Show this help message
 VERSION?=$(shell cat version 2>/dev/null || echo "0.0.0")
 INVENTORY?=inventory/hosts.yml
 EXTRA_VARS?=
-NAMESPACE?=tutumpro
+NAMESPACE?=tutum_pro
 COLLECTION_NAME?=cicd
 
 ## Collection Management

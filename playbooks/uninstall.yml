@@ -2,23 +2,23 @@
 # Tutum Pro - Full Stack Uninstallation (Docker)
 #
 # Usage:
-#   ansible-playbook tutumpro.cicd.uninstall
+#   ansible-playbook tutum_pro.cicd.uninstall
 #
 # With data removal:
-#   ansible-playbook tutumpro.cicd.uninstall -e docker_tutum_engine_remove_data=true
+#   ansible-playbook tutum_pro.cicd.uninstall -e docker_tutum_engine_remove_data=true
 
 - name: Uninstall Tutum Pro Full Stack (Docker)
   hosts: all
   become: true
   roles:
-    - role: tutumpro.cicd.docker.tutum_cli
+    - role: tutum_pro.cicd.docker.tutum_cli
       vars:
         docker_tutum_cli_state: "absent"
 
-    - role: tutumpro.cicd.docker.tutum_plugin
+    - role: tutum_pro.cicd.docker.tutum_plugin
       vars:
         docker_tutum_plugin_state: "absent"
 
-    - role: tutumpro.cicd.docker.tutum_engine
+    - role: tutum_pro.cicd.docker.tutum_engine
       vars:
         docker_tutum_engine_state: "absent"

@@ -1,6 +1,6 @@
 ---
 # Tutum Pro Configuration for your project
-# Override default values from tutumpro.cicd collection
+# Override default values from tutum_pro.cicd collection
 
 # =============================================================================
 # Component Versions (optional - defaults are in the collection)

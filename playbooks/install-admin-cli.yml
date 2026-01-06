@@ -5,7 +5,7 @@
 #   ansible-playbook -i inventory install-admin-cli.yml
 #
 # Variables:
-#   cli_name: tutumpro/tutum-admin-cli
+#   cli_image: tutumpro/tutum-admin-cli
 #   cli_version: 0.1.76
 #   cli_container_name: tutum-admin-cli
 

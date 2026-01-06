@@ -10,9 +10,9 @@
 
   roles:
     # Install all components using collection roles
-    - role: tutumpro.cicd.docker.tutum_engine
-    - role: tutumpro.cicd.docker.tutum_plugin
-    - role: tutumpro.cicd.docker.tutum_cli
+    - role: tutum_pro.cicd.docker.tutum_engine
+    - role: tutum_pro.cicd.docker.tutum_plugin
+    - role: tutum_pro.cicd.docker.tutum_cli
 
   post_tasks:
     - name: Show deployment summary

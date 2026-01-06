@@ -2,11 +2,11 @@
 # Tutum Version Report Playbook (Docker)
 #
 # Usage:
-#   ansible-playbook tutumpro.cicd.report
+#   ansible-playbook tutum_pro.cicd.report
 
 - name: Generate Tutum Version Report (Docker)
   hosts: all
   become: true
   gather_facts: true
   roles:
-    - role: tutumpro.cicd.docker.tutum_report
+    - role: tutum_pro.cicd.docker.tutum_report

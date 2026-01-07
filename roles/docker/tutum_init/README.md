@@ -13,6 +13,34 @@ Rola `tutum_init` automatycznie generuje:
 - Ansible >= 2.14
 - Kolekcja `tutum_pro.cicd`
 
+## Użycie
+
+Rolę uruchamia się bezpośrednio z linii poleceń:
+
+```bash
+# Podstawowe użycie (generuje pliki z domyślnymi ustawieniami)
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init
+
+# Z niestandardowymi zmiennymi
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
+  -e tutum_init_target_host=192.168.1.100 \
+  -e tutum_init_ansible_connection=ssh
+
+# Z zewnętrzną bazą danych
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
+  -e tutum_init_db_mode=external \
+  -e 'tutum_init_external_db_url=postgresql://user:pass@db.example.com:5432/tutum'
+
+# Nadpisanie istniejących plików
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
+  -e tutum_init_overwrite=true
+
+# Niestandardowe ścieżki
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
+  -e tutum_init_inventory_path=environments/prod \
+  -e tutum_init_playbook_file=deploy-tutum.yml
+```
+
 ## Zmienne roli
 
 ### Ścieżki plików
@@ -65,55 +93,6 @@ Rola `tutum_init` automatycznie generuje:
 |---------|-----------|------|
 | `tutum_init_master_key` | `""` | Klucz główny (puste = auto-generowany) |
 | `tutum_init_jwt_secret` | `""` | Sekret JWT (puste = auto-generowany) |
-
-## Przykłady użycia
-
-### Podstawowe użycie (localhost)
-
-```yaml
-- name: Generate Tutum installation files
-  hosts: localhost
-  connection: local
-  roles:
-    - role: tutum_pro.cicd.docker.tutum_init
-```
-
-### Zdalna instalacja
-
-```yaml
-- name: Generate Tutum installation files
-  hosts: localhost
-  connection: local
-  roles:
-    - role: tutum_pro.cicd.docker.tutum_init
-      tutum_init_target_host: "192.168.1.100"
-      tutum_init_ansible_connection: "ssh"
-```
-
-### Z zewnętrzną bazą danych
-
-```yaml
-- name: Generate Tutum installation files
-  hosts: localhost
-  connection: local
-  roles:
-    - role: tutum_pro.cicd.docker.tutum_init
-      tutum_init_db_mode: "external"
-      tutum_init_external_db_url: "postgresql://user:pass@db.example.com:5432/tutum"
-```
-
-### Niestandardowe ścieżki
-
-```yaml
-- name: Generate Tutum installation files
-  hosts: localhost
-  connection: local
-  roles:
-    - role: tutum_pro.cicd.docker.tutum_init
-      tutum_init_inventory_path: "environments/production"
-      tutum_init_inventory_file: "hosts.ini"
-      tutum_init_playbook_file: "deploy-tutum.yml"
-```
 
 ## Wygenerowane pliki
 

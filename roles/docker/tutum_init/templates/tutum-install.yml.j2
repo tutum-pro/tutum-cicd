@@ -5,12 +5,17 @@
 # Usage:
 #   ansible-playbook -i {{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }} {{ tutum_init_playbook_file }}
 #
+{% if tutum_init_become %}
+# With sudo password:
+#   ansible-playbook -i {{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }} {{ tutum_init_playbook_file }} --ask-become-pass
+#
+{% endif %}
 # With vault (for production):
 #   ansible-playbook -i {{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }} {{ tutum_init_playbook_file }} --ask-vault-pass
 
 - name: Install Tutum Platform (Docker)
   hosts: docker_servers
-  become: true
+  become: {{ tutum_init_become | lower }}
 
   vars:
     # Component versions

@@ -43,3 +43,6 @@ tutum_init_db_port: "5432"
 
 # Overwrite existing files
 tutum_init_overwrite: false
+
+# Become (sudo) settings for generated playbook
+tutum_init_become: true

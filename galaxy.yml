@@ -3,7 +3,7 @@
 ---
 namespace: tutum_pro
 name: cicd
-version: "1.1.5"
+version: "1.1.6"
 readme: README.md
 authors:
   - Tutum Pro Team

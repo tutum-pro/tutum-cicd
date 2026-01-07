@@ -242,7 +242,7 @@
       changed_when: "'Downloaded' in pull_engine.stdout or 'Pull complete' in pull_engine.stdout"
 
     - name: Get Docker socket group ID
-      ansible.builtin.shell: stat -c '%g' /var/run/docker.sock
+      ansible.builtin.command: stat -c '%g' /var/run/docker.sock
       register: docker_socket_gid
       changed_when: false
 

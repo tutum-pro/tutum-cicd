@@ -12,8 +12,14 @@ tutum_init_playbook_file: "tutum-install.yml"
 
 # Target hosts configuration
 tutum_init_target_host: "localhost"
+tutum_init_target_hostname: ""  # Optional: inventory hostname (default: same as target_host)
 tutum_init_ansible_connection: "local"
 tutum_init_ansible_python_interpreter: "/usr/bin/python3"
+
+# SSH configuration (for remote hosts with ansible_connection=ssh)
+tutum_init_ansible_user: ""
+tutum_init_ansible_ssh_key: ""
+tutum_init_ansible_become_password: ""  # Use ansible-vault for production!
 
 # Default component versions (will be written to generated playbook)
 tutum_init_engine_version: "3.3.5"

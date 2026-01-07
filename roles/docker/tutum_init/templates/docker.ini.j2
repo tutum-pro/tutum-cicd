@@ -5,15 +5,33 @@
 # Modify the hosts and connection settings as needed for your environment.
 
 [docker_servers]
+{% if tutum_init_ansible_connection == 'local' %}
 {{ tutum_init_target_host }} ansible_connection={{ tutum_init_ansible_connection }} ansible_python_interpreter={{ tutum_init_ansible_python_interpreter }}
+{% else %}
+{% set hostname = tutum_init_target_hostname if tutum_init_target_hostname else tutum_init_target_host | regex_replace('[^a-zA-Z0-9]', '-') %}
+{{ hostname }} ansible_host={{ tutum_init_target_host }}
+{% endif %}
 
-# To add remote hosts, use the following format:
-# server1.example.com ansible_host=192.168.1.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
-# server2.example.com ansible_host=192.168.1.11 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+# To add more hosts, use the following format:
+# server2 ansible_host=192.168.1.11
 
 [docker_servers:vars]
-# Common variables for all docker_servers
-ansible_become=true
+{% if tutum_init_ansible_connection != 'local' %}
+# SSH connection settings
+ansible_connection=ssh
+{% if tutum_init_ansible_user %}
+ansible_user={{ tutum_init_ansible_user }}
+{% endif %}
+{% if tutum_init_ansible_ssh_key %}
+ansible_ssh_private_key_file={{ tutum_init_ansible_ssh_key }}
+{% endif %}
+{% if tutum_init_ansible_become_password %}
+ansible_become_password={{ tutum_init_ansible_become_password }}
+{% endif %}
+
+{% endif %}
+# Become (sudo) settings
+ansible_become={{ tutum_init_become | lower }}
 
 # Tutum Engine configuration
 docker_tutum_engine_version={{ tutum_init_engine_version }}

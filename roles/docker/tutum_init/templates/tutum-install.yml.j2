@@ -15,43 +15,9 @@
 
 - name: Install Tutum Platform (Docker)
   hosts: docker_servers
-  become: {{ tutum_init_become | lower }}
 
-  vars:
-    # Component versions
-    docker_tutum_engine_version: "{{ tutum_init_engine_version }}"
-    docker_tutum_plugin_version: "{{ tutum_init_plugin_version }}"
-    docker_tutum_cli_version: "{{ tutum_init_cli_version }}"
-    docker_tutum_postgres_version: "{{ tutum_init_postgres_version }}"
-
-    # API ports
-    docker_tutum_rest_port: "{{ tutum_init_rest_port }}"
-    docker_tutum_grpc_port: "{{ tutum_init_grpc_port }}"
-
-{% if tutum_init_db_mode == 'external' and tutum_init_external_db_url %}
-    # External database configuration
-    docker_tutum_external_db_url: "{{ tutum_init_external_db_url }}"
-{% else %}
-    # Embedded database configuration
-    docker_tutum_db_name: "{{ tutum_init_db_name }}"
-    docker_tutum_db_user: "{{ tutum_init_db_user }}"
-    docker_tutum_db_password: "{{ tutum_init_db_password }}"
-    docker_tutum_db_port: "{{ tutum_init_db_port }}"
-{% endif %}
-
-{% if tutum_init_master_key %}
-    # Security keys (provided)
-    docker_tutum_master_key: "{{ tutum_init_master_key }}"
-{% else %}
-    # Security keys (auto-generated - SAVE THESE!)
-    # For production, use Ansible Vault to store these securely
-    # docker_tutum_master_key: "{{ '{{' }} lookup('password', '/dev/null chars=ascii_letters,digits length=32') {{ '}}' }}"
-{% endif %}
-{% if tutum_init_jwt_secret %}
-    docker_tutum_jwt_secret: "{{ tutum_init_jwt_secret }}"
-{% else %}
-    # docker_tutum_jwt_secret: "{{ '{{' }} lookup('password', '/dev/null chars=ascii_letters,digits length=32') {{ '}}' }}"
-{% endif %}
+  # All variables are defined in inventory file (docker_servers:vars section)
+  # This allows easy customization without modifying the playbook
 
   roles:
 {% if tutum_init_db_mode != 'external' or not tutum_init_external_db_url %}
@@ -77,10 +43,10 @@
           - "=========================================="
           - ""
           - "Services:"
-          - "  - REST API: http://{{ '{{' }} ansible_host {{ '}}' }}:{{ tutum_init_rest_port }}"
-          - "  - gRPC API: {{ '{{' }} ansible_host {{ '}}' }}:{{ tutum_init_grpc_port }}"
+          - "  - REST API: http://{{ '{{' }} ansible_host | default(inventory_hostname) {{ '}}' }}:{{ '{{' }} docker_tutum_rest_port {{ '}}' }}"
+          - "  - gRPC API: {{ '{{' }} ansible_host | default(inventory_hostname) {{ '}}' }}:{{ '{{' }} docker_tutum_grpc_port {{ '}}' }}"
 {% if tutum_init_db_mode != 'external' or not tutum_init_external_db_url %}
-          - "  - PostgreSQL: {{ '{{' }} ansible_host {{ '}}' }}:{{ tutum_init_db_port }}"
+          - "  - PostgreSQL: {{ '{{' }} ansible_host | default(inventory_hostname) {{ '}}' }}:{{ '{{' }} docker_tutum_db_port {{ '}}' }}"
 {% endif %}
           - ""
           - "To manage certificates, use tutum-admin-cli:"

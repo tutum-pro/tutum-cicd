@@ -1,0 +1,45 @@
+---
+# tutum_init role defaults
+
+# Path for generated inventory file (relative to playbook execution directory)
+tutum_init_inventory_path: "inventory/"
+
+# Generated inventory filename
+tutum_init_inventory_file: "docker.ini"
+
+# Generated playbook filename
+tutum_init_playbook_file: "tutum-install.yml"
+
+# Target hosts configuration
+tutum_init_target_host: "localhost"
+tutum_init_ansible_connection: "local"
+tutum_init_ansible_python_interpreter: "/usr/bin/python3"
+
+# Default component versions (will be written to generated playbook)
+tutum_init_engine_version: "3.3.5"
+tutum_init_plugin_version: "2.1.6"
+tutum_init_cli_version: "0.1.76"
+tutum_init_postgres_version: "15-alpine"
+
+# Database mode: "embedded" or "external"
+tutum_init_db_mode: "embedded"
+
+# External database URL (used when tutum_init_db_mode is "external")
+tutum_init_external_db_url: ""
+
+# Security keys (leave empty to auto-generate in playbook)
+tutum_init_master_key: ""
+tutum_init_jwt_secret: ""
+
+# Database credentials (for embedded mode)
+tutum_init_db_name: "tutum"
+tutum_init_db_user: "tutum"
+tutum_init_db_password: "tutum"
+
+# Ports
+tutum_init_rest_port: "8080"
+tutum_init_grpc_port: "9090"
+tutum_init_db_port: "5432"
+
+# Overwrite existing files
+tutum_init_overwrite: false

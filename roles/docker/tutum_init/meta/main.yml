@@ -1,0 +1,35 @@
+---
+# tutum_init role metadata
+
+galaxy_info:
+  author: Tutum Pro Team
+  description: Generate Tutum Platform installation playbook and inventory files
+  company: Tutum Pro
+
+  license: proprietary
+
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - tutum
+    - docker
+    - generator
+    - initialization
+    - setup
+
+dependencies: []

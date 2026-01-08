@@ -263,7 +263,7 @@
     msg:
       - "Tutum Engine installed successfully!"
       - ""
-      - "Database: {{ 'External' if docker_tutum_external_db_url | length > 0 else 'Embedded (localhost:' + docker_tutum_db_port + ')' }}"
+      - "Database: {{ 'External' if docker_tutum_external_db_url | length > 0 else 'Embedded (localhost:' + (docker_tutum_db_port | string) + ')' }}"
       - ""
       - "Services:"
       - "  - Tutum Engine REST API: http://localhost:{{ docker_tutum_rest_port }}"

@@ -12,8 +12,10 @@ docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', e
 docker_tutum_cli_container_name: "tutum-admin-cli"
 
 # Tutum Engine connection
-docker_tutum_engine_url: "localhost:9090"
+# NOTE: docker_tutum_engine_url is dynamically built from docker_tutum_grpc_port if not explicitly set
+docker_tutum_grpc_port: "9090"
 docker_tutum_rest_port: "8080"
+docker_tutum_engine_url: "localhost:{{ docker_tutum_grpc_port }}"
 
 # Action: install or uninstall
 docker_tutum_cli_state: "present"

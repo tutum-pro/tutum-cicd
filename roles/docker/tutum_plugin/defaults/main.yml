@@ -9,7 +9,9 @@ docker_tutum_plugin_image: "tutumpro/tutum-csi-driver-docker"
 docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', errors='ignore') | default('0.0.0') }}"
 
 # Tutum Engine connection (plugin uses host network)
-docker_tutum_engine_url: "localhost:9090"
+# NOTE: docker_tutum_engine_url is dynamically built from docker_tutum_grpc_port if not explicitly set
+docker_tutum_grpc_port: "9090"
+docker_tutum_engine_url: "localhost:{{ docker_tutum_grpc_port }}"
 
 # Plugin configuration
 docker_tutum_volume_dir: "/var/lib/tutum/volumes"

@@ -1,14 +1,13 @@
 ---
 # Docker Report Role Defaults
-
-# Expected versions (for comparison)
-docker_tutum_engine_version: "3.3.5"
-docker_tutum_cli_version: "0.1.76"
-docker_tutum_plugin_version: "2.1.6"
-docker_tutum_postgres_version: "15-alpine"
+#
+# NOTE: This role does NOT define default versions.
+# Version variables (docker_tutum_engine_version, docker_tutum_cli_version, etc.)
+# should be set in inventory or passed from other roles.
+# This ensures single source of truth for version numbers.
 
 # CI/CD version
 docker_tutum_cicd_version: "{{ lookup('file', role_path + '/../../../version', errors='ignore') | default('0.0.0') }}"
 
-# Plugin settings
+# Plugin settings (for image name only)
 docker_tutum_plugin_image: "tutumpro/tutum-csi-driver-docker"

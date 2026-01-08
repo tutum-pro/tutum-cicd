@@ -3,7 +3,7 @@
 # These can be overridden in your playbook or inventory
 
 # Component versions
-docker_tutum_engine_version: "3.3.5"
+docker_tutum_engine_version: "3.3.6"
 docker_tutum_postgres_version: "15-alpine"
 
 # CI/CD version for labeling (auto-detected from collection)

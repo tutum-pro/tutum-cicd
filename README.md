@@ -62,7 +62,7 @@ ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.uninstall
   become: true
 
   vars:
-    docker_tutum_engine_version: "3.3.5"
+    docker_tutum_engine_version: "3.3.6"
     docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
     docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
 
@@ -82,7 +82,7 @@ ansible-playbook -i inventory/hosts.yml tutum_pro.cicd.uninstall
   become: true
 
   vars:
-    docker_tutum_engine_version: "3.3.5"
+    docker_tutum_engine_version: "3.3.6"
     docker_tutum_external_db_url: "postgres://tutum:password@db.example.com:5432/tutum?sslmode=require"
     docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
     docker_tutum_jwt_secret: "YourSecure32CharacterJwtSecret!"
@@ -122,7 +122,7 @@ Installs Tutum Engine. Supports embedded PostgreSQL (via `tutum_postgres` role) 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `docker_tutum_engine_version` | `3.3.5` | Tutum Engine version |
+| `docker_tutum_engine_version` | `3.3.6` | Tutum Engine version |
 | `docker_tutum_external_db_url` | `""` | External PostgreSQL URL (skips embedded DB) |
 | `docker_tutum_db_name` | `tutum` | Database name (embedded mode) |
 | `docker_tutum_db_user` | `tutum` | Database user (embedded mode) |

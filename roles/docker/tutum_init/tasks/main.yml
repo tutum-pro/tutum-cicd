@@ -1,35 +1,35 @@
 ---
-# tutum_init - Generate Tutum Platform installation files
+# docker_tutum_init - Generate Tutum Platform installation files
 
 - name: Ensure inventory directory exists
   ansible.builtin.file:
-    path: "{{ tutum_init_inventory_path }}"
+    path: "{{ docker_tutum_init_inventory_path }}"
     state: directory
     mode: '0755'
 
 - name: Check if inventory file exists
   ansible.builtin.stat:
-    path: "{{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }}"
-  register: _inventory_exists
+    path: "{{ docker_tutum_init_inventory_path }}/{{ docker_tutum_init_inventory_file }}"
+  register: _docker_tutum_init_inventory_exists
 
 - name: Check if playbook file exists
   ansible.builtin.stat:
-    path: "{{ tutum_init_playbook_file }}"
-  register: _playbook_exists
+    path: "{{ docker_tutum_init_playbook_file }}"
+  register: _docker_tutum_init_playbook_exists
 
 - name: Generate inventory file
   ansible.builtin.template:
     src: docker.ini.j2
-    dest: "{{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }}"
+    dest: "{{ docker_tutum_init_inventory_path }}/{{ docker_tutum_init_inventory_file }}"
     mode: '0644'
-  when: tutum_init_overwrite | bool or not _inventory_exists.stat.exists
+  when: docker_tutum_init_overwrite | bool or not _docker_tutum_init_inventory_exists.stat.exists
 
 - name: Generate installation playbook
   ansible.builtin.template:
     src: tutum-install.yml.j2
-    dest: "{{ tutum_init_playbook_file }}"
+    dest: "{{ docker_tutum_init_playbook_file }}"
     mode: '0644'
-  when: tutum_init_overwrite | bool or not _playbook_exists.stat.exists
+  when: docker_tutum_init_overwrite | bool or not _docker_tutum_init_playbook_exists.stat.exists
 
 - name: Display generated files info
   ansible.builtin.debug:
@@ -37,10 +37,10 @@
       - "Tutum Platform installation files generated!"
       - ""
       - "Generated files:"
-      - "  - Inventory: {{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }}"
-      - "  - Playbook:  {{ tutum_init_playbook_file }}"
+      - "  - Inventory: {{ docker_tutum_init_inventory_path }}/{{ docker_tutum_init_inventory_file }}"
+      - "  - Playbook:  {{ docker_tutum_init_playbook_file }}"
       - ""
       - "To install Tutum Platform, run:"
-      - "  ansible-playbook -i {{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }} {{ tutum_init_playbook_file }}"
+      - "  ansible-playbook -i {{ docker_tutum_init_inventory_path }}/{{ docker_tutum_init_inventory_file }} {{ docker_tutum_init_playbook_file }}"
       - ""
-      - "Database mode: {{ tutum_init_db_mode }}"
+      - "Database mode: {{ docker_tutum_init_db_mode }}"

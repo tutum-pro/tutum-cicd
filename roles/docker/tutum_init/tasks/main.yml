@@ -22,14 +22,14 @@
     src: docker.ini.j2
     dest: "{{ tutum_init_inventory_path }}/{{ tutum_init_inventory_file }}"
     mode: '0644'
-  when: tutum_init_overwrite or not _inventory_exists.stat.exists
+  when: tutum_init_overwrite | bool or not _inventory_exists.stat.exists
 
 - name: Generate installation playbook
   ansible.builtin.template:
     src: tutum-install.yml.j2
     dest: "{{ tutum_init_playbook_file }}"
     mode: '0644'
-  when: tutum_init_overwrite or not _playbook_exists.stat.exists
+  when: tutum_init_overwrite | bool or not _playbook_exists.stat.exists
 
 - name: Display generated files info
   ansible.builtin.debug:

@@ -218,8 +218,8 @@
     -e DATABASE_MAX_IDLE_CONNS=5
     -e DATABASE_CONN_MAX_LIFETIME=5m
     -e TUTUM_MASTER_KEY={{ docker_tutum_master_key }}
-    -e TUTUM_REST_ADDR=:{{ docker_tutum_rest_port }}
-    -e TUTUM_GRPC_ADDR=:{{ docker_tutum_grpc_port }}
+    -e TUTUM_REST_ADDR=:8080
+    -e TUTUM_GRPC_ADDR=:9090
     -e TUTUM_LOG_LEVEL={{ docker_tutum_log_level }}
     -e TUTUM_LOG_FORMAT=console
     -e TUTUM_JWT_SECRET={{ docker_tutum_jwt_secret }}

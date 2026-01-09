@@ -2,7 +2,7 @@
 # Docker CLI Role Defaults
 
 # CLI version
-docker_tutum_cli_version: "0.1.76"
+docker_tutum_cli_version: "0.2.0"
 docker_tutum_cli_image: "tutumpro/tutum-admin-cli"
 
 # CI/CD version for labeling

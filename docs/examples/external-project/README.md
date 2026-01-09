@@ -55,7 +55,7 @@ You can also use the roles directly in your playbooks:
   become: true
 
   vars:
-    tutum_engine_version: "3.3.6"
+    tutum_engine_version: "4.2.0"
     tutum_master_key: "MySecure32CharacterKeyHere!!!!"
     tutum_log_level: "debug"
 

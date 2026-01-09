@@ -24,10 +24,10 @@ cicd_version: "{{ lookup('file', playbook_dir + '/../version', errors='ignore') 
 # -----------------------------------------------------------------------------
 
 # Tutum Engine
-docker_tutum_engine_version: "3.3.6"
+docker_tutum_engine_version: "4.2.0"
 
 # Tutum Admin CLI
-cli_version: "0.1.76"
+cli_version: "0.2.0"
 
 # Tutum Docker Volume Plugin (CSI Driver)
 plugin_version: "2.1.6"

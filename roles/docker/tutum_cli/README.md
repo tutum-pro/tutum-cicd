@@ -12,7 +12,7 @@ Installs Tutum Admin CLI container for certificate management operations.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `docker_tutum_cli_version` | `0.1.76` | CLI version |
+| `docker_tutum_cli_version` | `0.2.0` | CLI version |
 | `docker_tutum_cli_container_name` | `tutum-admin-cli` | Container name |
 | `docker_tutum_engine_url` | `localhost:9090` | Tutum Engine gRPC URL |
 | `docker_tutum_cli_state` | `present` | `present` or `absent` |

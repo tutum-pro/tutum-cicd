@@ -28,9 +28,9 @@ docker_tutum_init_ansible_become_password: ""  # Sudo password (use ansible-vaul
 #   - docker_tutum_plugin_version  -> roles/docker/tutum_plugin/defaults/main.yml
 #   - docker_tutum_cli_version     -> roles/docker/tutum_cli/defaults/main.yml
 #   - docker_tutum_postgres_version -> roles/docker/tutum_postgres/defaults/main.yml
-docker_tutum_engine_version: "3.3.6"
+docker_tutum_engine_version: "4.2.0"
 docker_tutum_plugin_version: "2.1.6"
-docker_tutum_cli_version: "0.1.76"
+docker_tutum_cli_version: "0.2.0"
 docker_tutum_postgres_version: "15-alpine"
 
 # Database mode: "embedded" or "external"

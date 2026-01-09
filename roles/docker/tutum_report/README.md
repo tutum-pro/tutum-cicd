@@ -25,8 +25,8 @@ truth for version numbers across all roles.
   become: true
   vars:
     # Set expected versions for comparison
-    docker_tutum_engine_version: "3.3.6"
-    docker_tutum_cli_version: "0.1.76"
+    docker_tutum_engine_version: "4.2.0"
+    docker_tutum_cli_version: "0.2.0"
     docker_tutum_plugin_version: "2.1.6"
   roles:
     - role: tutum_pro.cicd.docker.tutum_report

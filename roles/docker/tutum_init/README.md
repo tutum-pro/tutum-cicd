@@ -71,9 +71,9 @@ Te zmienne używają tych samych nazw co inne role (single source of truth):
 
 | Zmienna | Domyślnie | Opis |
 |---------|-----------|------|
-| `docker_tutum_engine_version` | `3.3.6` | Wersja Tutum Engine |
+| `docker_tutum_engine_version` | `4.2.0` | Wersja Tutum Engine |
 | `docker_tutum_plugin_version` | `2.1.6` | Wersja Docker Plugin |
-| `docker_tutum_cli_version` | `0.1.76` | Wersja Admin CLI |
+| `docker_tutum_cli_version` | `0.2.0` | Wersja Admin CLI |
 | `docker_tutum_postgres_version` | `15-alpine` | Wersja PostgreSQL |
 
 ### Baza danych

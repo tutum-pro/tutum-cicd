@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tutum-postgres-data
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: tutum
+spec:
+  accessModes:
+    - ReadWriteOnce
+{% if k8s_tutum_postgres_storage_class %}
+  storageClassName: {{ k8s_tutum_postgres_storage_class }}
+{% endif %}
+  resources:
+    requests:
+      storage: {{ k8s_tutum_postgres_storage_size }}

@@ -31,13 +31,22 @@ k8s_tutum_engine_grpc_port: 9090
 k8s_tutum_engine_metrics_port: 9091
 
 # PostgreSQL connection
-# For external PostgreSQL (recommended for production)
-k8s_tutum_postgres_host: ""  # Required: e.g., "192.168.0.63" or "postgres.example.com"
+# If k8s_tutum_external_db_url is set, external PostgreSQL will be used
+# and tutum_postgres role should be skipped
+# Format: postgres://user:password@host:port/dbname?sslmode=disable
+k8s_tutum_external_db_url: ""
+
+# For external PostgreSQL (when k8s_tutum_external_db_url is empty but host is set)
+# If both k8s_tutum_external_db_url and k8s_tutum_postgres_host are empty,
+# embedded PostgreSQL from tutum_postgres role will be used
+k8s_tutum_postgres_host: ""  # e.g., "192.168.0.63" or "postgres.example.com"
 k8s_tutum_postgres_port: "5432"
-k8s_tutum_postgres_db: "tutum"
-k8s_tutum_postgres_user: "tutum"
-k8s_tutum_postgres_password: "tutum"  # Use ansible-vault in production!
 k8s_tutum_postgres_sslmode: "disable"
+
+# Database configuration (used for both embedded and external)
+k8s_tutum_db_name: "tutum"
+k8s_tutum_db_user: "tutum"
+k8s_tutum_db_password: "tutum"  # Use ansible-vault in production!
 
 # Security keys (IMPORTANT: Override in production!)
 # These keys MUST be exactly 32 characters for AES-256 encryption
@@ -51,7 +60,7 @@ k8s_tutum_create_not_existing_obj: "true"
 k8s_tutum_pod_restart_enabled: "true"
 
 # Kubernetes distribution for kubelet paths
-# Options: "standard", "microk8s", "k3s", "openshift"
+# Options: "standard", "microk8s", "k3s", "rke2", "openshift"
 k8s_distribution: "standard"
 
 # Kubelet paths per distribution
@@ -59,6 +68,7 @@ k8s_kubelet_paths:
   standard: "/var/lib/kubelet"
   microk8s: "/var/snap/microk8s/common/var/lib/kubelet"
   k3s: "/var/lib/rancher/k3s/agent"
+  rke2: "/var/lib/rancher/rke2/agent"
   openshift: "/var/lib/kubelet"
 
 # Action: present or absent

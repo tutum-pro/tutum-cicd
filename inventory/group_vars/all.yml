@@ -24,7 +24,7 @@ cicd_version: "{{ lookup('file', playbook_dir + '/../version', errors='ignore') 
 # -----------------------------------------------------------------------------
 
 # Tutum Engine
-docker_tutum_engine_version: "4.2.2"
+docker_tutum_engine_version: "4.2.3"
 
 # Tutum Admin CLI
 cli_version: "0.2.1"

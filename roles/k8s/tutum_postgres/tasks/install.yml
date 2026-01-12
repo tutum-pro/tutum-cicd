@@ -1,0 +1,55 @@
+---
+# Install PostgreSQL to Kubernetes
+
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k8s_tutum_namespace }}"
+        labels:
+          app.kubernetes.io/name: tutum
+          app.kubernetes.io/component: database
+
+- name: Create PostgreSQL Secret
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'secret.yml.j2') | from_yaml }}"
+
+- name: Create PostgreSQL PersistentVolumeClaim
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'pvc.yml.j2') | from_yaml }}"
+
+- name: Create PostgreSQL Deployment
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'deployment.yml.j2') | from_yaml }}"
+
+- name: Create PostgreSQL Service
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'service.yml.j2') | from_yaml }}"
+
+- name: Wait for PostgreSQL to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-postgres
+    namespace: "{{ k8s_tutum_namespace }}"
+  register: postgres_deployment
+  until: >-
+    postgres_deployment.resources | length > 0 and
+    postgres_deployment.resources[0].status.readyReplicas | default(0) >= 1
+  retries: 30
+  delay: 10
+
+- name: Display PostgreSQL deployment info
+  ansible.builtin.debug:
+    msg:
+      - "PostgreSQL deployed to namespace: {{ k8s_tutum_namespace }}"
+      - "Service: tutum-postgres.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_db_port }}"
+      - "Database: {{ k8s_tutum_db_name }}"
+      - "User: {{ k8s_tutum_db_user }}"

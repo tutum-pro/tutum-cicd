@@ -1,0 +1,41 @@
+---
+# k8s_tutum_postgres role defaults
+
+# PostgreSQL version
+k8s_tutum_postgres_version: "15-alpine"
+
+# Namespace (shared with tutum_engine)
+k8s_tutum_namespace: "tutum-system"
+
+# Deployment configuration
+k8s_tutum_postgres_replicas: 1
+k8s_tutum_postgres_image: "postgres"
+k8s_tutum_postgres_image_pull_policy: "IfNotPresent"
+
+# Resource limits
+k8s_tutum_postgres_resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Database configuration
+k8s_tutum_db_name: "tutum"
+k8s_tutum_db_user: "tutum"
+k8s_tutum_db_password: "tutum"  # Use ansible-vault in production!
+k8s_tutum_db_port: "5432"
+
+# Storage configuration
+k8s_tutum_postgres_storage_class: ""  # Empty = default storage class
+k8s_tutum_postgres_storage_size: "5Gi"
+
+# Service configuration
+k8s_tutum_postgres_service_type: "ClusterIP"
+
+# Action: present or absent
+k8s_tutum_postgres_state: "present"
+
+# Uninstall options
+k8s_tutum_postgres_remove_data: false

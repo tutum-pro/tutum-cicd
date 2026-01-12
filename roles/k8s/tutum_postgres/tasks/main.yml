@@ -1,0 +1,10 @@
+---
+# k8s_tutum_postgres tasks
+
+- name: Install PostgreSQL
+  ansible.builtin.include_tasks: install.yml
+  when: k8s_tutum_postgres_state == "present"
+
+- name: Uninstall PostgreSQL
+  ansible.builtin.include_tasks: uninstall.yml
+  when: k8s_tutum_postgres_state == "absent"

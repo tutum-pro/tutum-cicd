@@ -1,22 +1,38 @@
 ---
 # Tutum Platform - Full Kubernetes Installation
 #
-# Usage:
+# Usage (embedded PostgreSQL - default):
+#   ansible-playbook playbooks/install-tutum-k8s.yml
+#
+# Usage (external PostgreSQL):
 #   ansible-playbook playbooks/install-tutum-k8s.yml \
+#     -e k8s_tutum_db_mode=external \
 #     -e k8s_tutum_postgres_host=192.168.1.100 \
-#     -e k8s_tutum_postgres_password=secure-password
+#     -e k8s_tutum_db_password=secure-password
+#
+# Usage (external PostgreSQL with full URL):
+#   ansible-playbook playbooks/install-tutum-k8s.yml \
+#     -e k8s_tutum_db_mode=external \
+#     -e k8s_tutum_external_db_url="postgres://user:pass@host:5432/dbname?sslmode=disable"
 #
 # For MicroK8s:
 #   ansible-playbook playbooks/install-tutum-k8s.yml \
-#     -e k8s_distribution=microk8s \
-#     -e k8s_tutum_postgres_host=192.168.1.100
+#     -e k8s_distribution=microk8s
 
 - name: Install Tutum Platform on Kubernetes
   hosts: localhost
   connection: local
   gather_facts: false
 
+  vars:
+    # Database mode: "embedded" or "external"
+    k8s_tutum_db_mode: "embedded"
+
   roles:
+    # Embedded PostgreSQL (only when db_mode=embedded)
+    - role: tutum_pro.cicd.k8s.tutum_postgres
+      when: k8s_tutum_db_mode == "embedded"
+
     # Tutum Engine (core service)
     - role: tutum_pro.cicd.k8s.tutum_engine
 
@@ -32,6 +48,10 @@
           - "=========================================="
           - ""
           - "Namespace: {{ k8s_tutum_namespace }}"
+          - ""
+          - "PostgreSQL ({{ k8s_tutum_db_mode }}):"
+          - "  {% if k8s_tutum_db_mode == 'embedded' %}- Service: tutum-postgres.{{ k8s_tutum_namespace }}.svc.cluster.local:5432{% else %}- External: {{ k8s_tutum_postgres_host | default(k8s_tutum_external_db_url) }}{% endif %}"
+          - "  - Database: {{ k8s_tutum_db_name }}"
           - ""
           - "Tutum Engine:"
           - "  - REST API: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:8080"

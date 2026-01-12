@@ -24,7 +24,7 @@ Deploy Tutum CSI Driver to Kubernetes cluster for certificate volume provisionin
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `k8s_tutum_namespace` | `tutum-system` | Kubernetes namespace |
-| `k8s_distribution` | `standard` | K8s distribution: `standard`, `microk8s`, `k3s`, `openshift` |
+| `k8s_distribution` | `standard` | K8s distribution: `standard`, `microk8s`, `k3s`, `rke2`, `openshift` |
 | `k8s_tutum_engine_url` | `tutum-engine.tutum-system.svc.cluster.local:9090` | Tutum Engine gRPC URL |
 
 ### CSI Configuration
@@ -51,6 +51,7 @@ The role supports different Kubernetes distributions with appropriate kubelet pa
 | `standard` | `/var/lib/kubelet` |
 | `microk8s` | `/var/snap/microk8s/common/var/lib/kubelet` |
 | `k3s` | `/var/lib/rancher/k3s/agent` |
+| `rke2` | `/var/lib/rancher/rke2/agent` |
 | `openshift` | `/var/lib/kubelet` |
 
 ## Example Playbook

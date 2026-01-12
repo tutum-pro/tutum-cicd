@@ -3,6 +3,10 @@
 #
 # Usage:
 #   ansible-playbook playbooks/uninstall-tutum-k8s.yml
+#
+# To also remove PostgreSQL data (PVC):
+#   ansible-playbook playbooks/uninstall-tutum-k8s.yml \
+#     -e k8s_tutum_postgres_remove_data=true
 
 - name: Uninstall Tutum Platform from Kubernetes
   hosts: localhost
@@ -10,8 +14,14 @@
   gather_facts: false
 
   vars:
+    # Database mode (must match installation)
+    k8s_tutum_db_mode: "embedded"
+    # Component states
     k8s_tutum_engine_state: "absent"
     k8s_tutum_csi_state: "absent"
+    k8s_tutum_postgres_state: "absent"
+    # Set to true to remove PostgreSQL PVC (data loss!)
+    k8s_tutum_postgres_remove_data: false
 
   roles:
     # Uninstall CSI Driver first (depends on engine)
@@ -19,6 +29,10 @@
 
     # Uninstall Tutum Engine
     - role: tutum_pro.cicd.k8s.tutum_engine
+
+    # Uninstall embedded PostgreSQL (only when db_mode=embedded)
+    - role: tutum_pro.cicd.k8s.tutum_postgres
+      when: k8s_tutum_db_mode == "embedded"
 
   post_tasks:
     - name: Display uninstallation summary
@@ -29,6 +43,7 @@
           - "=========================================="
           - ""
           - "All Tutum resources have been removed."
+          - "{% if k8s_tutum_db_mode == 'embedded' and not k8s_tutum_postgres_remove_data %}PostgreSQL data (PVC) was preserved.{% endif %}"
           - "Namespace {{ k8s_tutum_namespace }} was preserved."
           - ""
           - "To delete the namespace:"

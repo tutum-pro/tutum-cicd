@@ -8,7 +8,9 @@
 # Requirements:
 #   - kubectl configured with cluster access
 #   - kubernetes.core collection installed
+{% if k8s_tutum_init_db_mode == "external" %}
 #   - PostgreSQL database accessible from cluster
+{% endif %}
 
 - name: Install Tutum Platform on Kubernetes
   hosts: localhost
@@ -22,14 +24,25 @@
     # Kubernetes distribution (affects kubelet paths)
     k8s_distribution: "{{ k8s_tutum_init_distribution }}"
 
+{% if k8s_tutum_init_db_mode == "embedded" and k8s_tutum_init_generate_postgres %}
+    # Embedded PostgreSQL configuration
+    k8s_tutum_db_name: "{{ k8s_tutum_init_postgres_db }}"
+    k8s_tutum_db_user: "{{ k8s_tutum_init_postgres_user }}"
+    k8s_tutum_db_password: "{{ k8s_tutum_init_postgres_password }}"
+{% endif %}
+
 {% if k8s_tutum_init_generate_engine %}
     # Tutum Engine configuration
     k8s_tutum_engine_version: "{{ k8s_tutum_engine_version }}"
+{% if k8s_tutum_init_external_db_url %}
+    k8s_tutum_external_db_url: "{{ k8s_tutum_init_external_db_url }}"
+{% elif k8s_tutum_init_db_mode == "external" and k8s_tutum_init_postgres_host %}
     k8s_tutum_postgres_host: "{{ k8s_tutum_init_postgres_host }}"
     k8s_tutum_postgres_port: "{{ k8s_tutum_init_postgres_port }}"
-    k8s_tutum_postgres_db: "{{ k8s_tutum_init_postgres_db }}"
-    k8s_tutum_postgres_user: "{{ k8s_tutum_init_postgres_user }}"
-    k8s_tutum_postgres_password: "{{ k8s_tutum_init_postgres_password }}"
+{% endif %}
+    k8s_tutum_db_name: "{{ k8s_tutum_init_postgres_db }}"
+    k8s_tutum_db_user: "{{ k8s_tutum_init_postgres_user }}"
+    k8s_tutum_db_password: "{{ k8s_tutum_init_postgres_password }}"
 {% if k8s_tutum_init_master_key %}
     k8s_tutum_master_key: "{{ k8s_tutum_init_master_key }}"
 {% else %}
@@ -51,6 +64,11 @@
 {% endif %}
 
   roles:
+{% if k8s_tutum_init_db_mode == "embedded" and k8s_tutum_init_generate_postgres %}
+    # Embedded PostgreSQL database
+    - role: tutum_pro.cicd.k8s.tutum_postgres
+{% endif %}
+
 {% if k8s_tutum_init_generate_engine %}
     # Tutum Engine (core service)
     - role: tutum_pro.cicd.k8s.tutum_engine
@@ -70,6 +88,12 @@
           - "=========================================="
           - ""
           - "Namespace: {{ k8s_tutum_namespace }}"
+{% if k8s_tutum_init_db_mode == "embedded" and k8s_tutum_init_generate_postgres %}
+          - ""
+          - "PostgreSQL (embedded):"
+          - "  - Service: tutum-postgres.{{ k8s_tutum_namespace }}.svc.cluster.local:5432"
+          - "  - Database: {{ k8s_tutum_init_postgres_db }}"
+{% endif %}
 {% if k8s_tutum_init_generate_engine %}
           - ""
           - "Tutum Engine:"

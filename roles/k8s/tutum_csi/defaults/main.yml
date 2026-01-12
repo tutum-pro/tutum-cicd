@@ -19,7 +19,7 @@ k8s_csi_node_driver_registrar_image: "registry.k8s.io/sig-storage/csi-node-drive
 k8s_tutum_engine_url: "tutum-engine.tutum-system.svc.cluster.local:9090"
 
 # Kubernetes distribution for kubelet paths
-# Options: "standard", "microk8s", "k3s", "openshift"
+# Options: "standard", "microk8s", "k3s", "rke2", "openshift"
 k8s_distribution: "standard"
 
 # Kubelet paths per distribution
@@ -27,6 +27,7 @@ _k8s_kubelet_paths:
   standard: "/var/lib/kubelet"
   microk8s: "/var/snap/microk8s/common/var/lib/kubelet"
   k3s: "/var/lib/rancher/k3s/agent"
+  rke2: "/var/lib/rancher/rke2/agent"
   openshift: "/var/lib/kubelet"
 
 # CSI Driver name

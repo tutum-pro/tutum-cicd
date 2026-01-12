@@ -1,0 +1,41 @@
+---
+# Uninstall PostgreSQL from Kubernetes
+
+- name: Delete PostgreSQL Service
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Service
+    name: tutum-postgres
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete PostgreSQL Deployment
+  kubernetes.core.k8s:
+    state: absent
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-postgres
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete PostgreSQL Secret
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Secret
+    name: tutum-postgres-secret
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete PostgreSQL PVC (if remove_data is true)
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: tutum-postgres-data
+    namespace: "{{ k8s_tutum_namespace }}"
+  when: k8s_tutum_postgres_remove_data | bool
+
+- name: Display uninstall info
+  ansible.builtin.debug:
+    msg:
+      - "PostgreSQL removed from namespace: {{ k8s_tutum_namespace }}"
+      - "PVC preserved: {{ not (k8s_tutum_postgres_remove_data | bool) }}"

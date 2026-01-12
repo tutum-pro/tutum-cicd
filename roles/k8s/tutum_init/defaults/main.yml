@@ -19,20 +19,30 @@ k8s_tutum_csi_version: "3.1.0"
 k8s_tutum_namespace: "tutum-system"
 
 # Kubernetes distribution
-# Options: "standard", "microk8s", "k3s", "openshift"
+# Options: "standard", "microk8s", "k3s", "rke2", "openshift"
 k8s_tutum_init_distribution: "standard"
 
-# PostgreSQL connection (required)
+# Database mode: "embedded" or "external"
+# embedded: Deploys PostgreSQL in Kubernetes (tutum_postgres role)
+# external: Uses external PostgreSQL (requires k8s_tutum_init_postgres_host)
+k8s_tutum_init_db_mode: "embedded"
+
+# PostgreSQL connection (required for external mode)
 k8s_tutum_init_postgres_host: ""
 k8s_tutum_init_postgres_port: "5432"
 k8s_tutum_init_postgres_db: "tutum"
 k8s_tutum_init_postgres_user: "tutum"
 k8s_tutum_init_postgres_password: "tutum"
 
+# External database URL (alternative to individual settings)
+# Format: postgres://user:password@host:port/dbname?sslmode=disable
+k8s_tutum_init_external_db_url: ""
+
 # Security keys (leave empty to auto-generate)
 k8s_tutum_init_master_key: ""
 k8s_tutum_init_jwt_secret: ""
 
 # Generate components
+k8s_tutum_init_generate_postgres: true  # Only used when db_mode=embedded
 k8s_tutum_init_generate_engine: true
 k8s_tutum_init_generate_csi: true

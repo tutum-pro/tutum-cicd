@@ -6,7 +6,7 @@
 #
 # Variables:
 #   cli_image: tutumpro/tutum-admin-cli
-#   cli_version: 0.2.0
+#   cli_version: 0.2.1
 #   cli_container_name: tutum-admin-cli
 
 - name: Install Tutum Admin CLI Container

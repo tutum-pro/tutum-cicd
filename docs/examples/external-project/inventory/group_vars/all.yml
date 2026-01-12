@@ -6,8 +6,8 @@
 # Component Versions (optional - defaults are in the collection)
 # =============================================================================
 
-# docker_tutum_engine_version: "4.2.0"
-# docker_tutum_cli_version: "0.2.0"
+# docker_tutum_engine_version: "4.2.2"
+# docker_tutum_cli_version: "0.2.1"
 # docker_tutum_plugin_version: "2.1.6"
 # docker_tutum_postgres_version: "15-alpine"
 

@@ -12,7 +12,7 @@ Installs Tutum Engine on Docker. Supports both embedded PostgreSQL (via `tutum_p
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `docker_tutum_engine_version` | `4.2.0` | Tutum Engine version |
+| `docker_tutum_engine_version` | `4.2.2` | Tutum Engine version |
 | `docker_tutum_external_db_url` | `""` | External PostgreSQL URL. If set, embedded PostgreSQL is skipped |
 | `docker_tutum_db_name` | `tutum` | Database name (embedded mode) |
 | `docker_tutum_db_user` | `tutum` | Database user (embedded mode) |
@@ -62,7 +62,7 @@ When `docker_tutum_external_db_url` is set, the role connects to an external Pos
   roles:
     - role: tutum_pro.cicd.docker.tutum_engine
       vars:
-        docker_tutum_engine_version: "4.2.0"
+        docker_tutum_engine_version: "4.2.2"
         docker_tutum_master_key: "YourSecure32CharacterKeyHere!!!"
 ```
 

@@ -40,7 +40,7 @@
     # Directories - defined in inventory/group_vars/all.yml
     _docker_tutum_data_dir: "{{ docker_tutum_data_dir }}"
     _docker_tutum_config_dir: "{{ docker_tutum_config_dir }}"
-    _migrations_src_dir: "{{ playbook_dir }}/../files/migrations"
+    _migrations_src_dir: "{{ playbook_dir }}/../roles/docker/tutum_engine/files/migrations"
 
     # Docker network - defined in inventory/group_vars/all.yml
     _docker_tutum_network: "{{ docker_tutum_network }}"

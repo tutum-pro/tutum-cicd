@@ -1,0 +1,65 @@
+---
+# k8s_tutum_engine role defaults
+
+# Component versions
+# IMPORTANT: These values MUST be synchronized with the respective role defaults:
+#   - k8s_tutum_engine_version -> roles/k8s/tutum_engine/defaults/main.yml (this file)
+#   - k8s_tutum_csi_version    -> roles/k8s/tutum_csi/defaults/main.yml
+k8s_tutum_engine_version: "4.2.2"
+
+# Namespace
+k8s_tutum_namespace: "tutum-system"
+
+# Deployment configuration
+k8s_tutum_engine_replicas: 1
+k8s_tutum_engine_image: "tutumpro/tutum-engine"
+k8s_tutum_engine_image_pull_policy: "Always"
+
+# Resource limits
+k8s_tutum_engine_resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Service configuration
+k8s_tutum_engine_service_type: "ClusterIP"
+k8s_tutum_engine_http_port: 8080
+k8s_tutum_engine_grpc_port: 9090
+k8s_tutum_engine_metrics_port: 9091
+
+# PostgreSQL connection
+# For external PostgreSQL (recommended for production)
+k8s_tutum_postgres_host: ""  # Required: e.g., "192.168.0.63" or "postgres.example.com"
+k8s_tutum_postgres_port: "5432"
+k8s_tutum_postgres_db: "tutum"
+k8s_tutum_postgres_user: "tutum"
+k8s_tutum_postgres_password: "tutum"  # Use ansible-vault in production!
+k8s_tutum_postgres_sslmode: "disable"
+
+# Security keys (IMPORTANT: Override in production!)
+# These keys MUST be exactly 32 characters for AES-256 encryption
+k8s_tutum_master_key: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+k8s_tutum_jwt_secret: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+
+# Application configuration
+k8s_tutum_log_level: "info"
+k8s_tutum_enable_metrics: "true"
+k8s_tutum_create_not_existing_obj: "true"
+k8s_tutum_pod_restart_enabled: "true"
+
+# Kubernetes distribution for kubelet paths
+# Options: "standard", "microk8s", "k3s", "openshift"
+k8s_distribution: "standard"
+
+# Kubelet paths per distribution
+k8s_kubelet_paths:
+  standard: "/var/lib/kubelet"
+  microk8s: "/var/snap/microk8s/common/var/lib/kubelet"
+  k3s: "/var/lib/rancher/k3s/agent"
+  openshift: "/var/lib/kubelet"
+
+# Action: present or absent
+k8s_tutum_engine_state: "present"

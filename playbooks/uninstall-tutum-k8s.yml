@@ -1,0 +1,35 @@
+---
+# Tutum Platform - Kubernetes Uninstallation
+#
+# Usage:
+#   ansible-playbook playbooks/uninstall-tutum-k8s.yml
+
+- name: Uninstall Tutum Platform from Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    k8s_tutum_engine_state: "absent"
+    k8s_tutum_csi_state: "absent"
+
+  roles:
+    # Uninstall CSI Driver first (depends on engine)
+    - role: tutum_pro.cicd.k8s.tutum_csi
+
+    # Uninstall Tutum Engine
+    - role: tutum_pro.cicd.k8s.tutum_engine
+
+  post_tasks:
+    - name: Display uninstallation summary
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "  Tutum Platform Uninstalled!"
+          - "=========================================="
+          - ""
+          - "All Tutum resources have been removed."
+          - "Namespace {{ k8s_tutum_namespace }} was preserved."
+          - ""
+          - "To delete the namespace:"
+          - "  kubectl delete namespace {{ k8s_tutum_namespace }}"

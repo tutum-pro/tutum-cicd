@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tutum-engine-config
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: ansible
+data:
+  LOG_LEVEL: "{{ k8s_tutum_log_level }}"
+  ENABLE_METRICS: "{{ k8s_tutum_enable_metrics }}"
+  METRICS_PORT: "{{ k8s_tutum_engine_metrics_port }}"
+  # PostgreSQL connection parameters
+  POSTGRES_HOST: "{{ k8s_tutum_postgres_host }}"
+  POSTGRES_PORT: "{{ k8s_tutum_postgres_port }}"
+  POSTGRES_DB: "{{ k8s_tutum_postgres_db }}"
+  POSTGRES_USER: "{{ k8s_tutum_postgres_user }}"
+  # Auto-provisioning
+  CREATE_NOT_EXISTING_OBJ: "{{ k8s_tutum_create_not_existing_obj }}"
+  # Kubernetes pod restart
+  K8S_POD_RESTART_ENABLED: "{{ k8s_tutum_pod_restart_enabled }}"

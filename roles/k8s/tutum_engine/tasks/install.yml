@@ -1,0 +1,107 @@
+---
+# k8s_tutum_engine - Installation tasks
+
+# ==================== Validation ====================
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_postgres_host | length > 0
+      - k8s_tutum_postgres_password | length > 0
+      - k8s_tutum_master_key | length == 32
+    fail_msg: |
+      Required variables are missing or invalid:
+      - k8s_tutum_postgres_host must be set (current: '{{ k8s_tutum_postgres_host }}')
+      - k8s_tutum_postgres_password must be set
+      - k8s_tutum_master_key must be exactly 32 characters (current length: {{ k8s_tutum_master_key | length }})
+
+- name: Check kubectl connectivity
+  ansible.builtin.command: kubectl cluster-info
+  changed_when: false
+  register: _k8s_cluster_info
+
+# ==================== Namespace ====================
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'namespace.yml.j2') | from_yaml }}"
+
+# ==================== ConfigMap & Secret ====================
+- name: Create ConfigMap
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'configmap.yml.j2') | from_yaml }}"
+
+- name: Create Secret
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'secret.yml.j2') | from_yaml }}"
+
+# ==================== RBAC ====================
+- name: Create RBAC resources
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ item }}"
+  loop: "{{ lookup('template', 'rbac.yml.j2') | from_yaml_all | list }}"
+  loop_control:
+    label: "{{ item.kind }}/{{ item.metadata.name }}"
+
+# ==================== Deployment ====================
+- name: Deploy tutum-engine
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'deployment.yml.j2') | from_yaml }}"
+  register: _k8s_deployment
+
+# ==================== Services ====================
+- name: Create Services
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ item }}"
+  loop: "{{ lookup('template', 'service.yml.j2') | from_yaml_all | list }}"
+  loop_control:
+    label: "{{ item.kind }}/{{ item.metadata.name }}"
+
+# ==================== Wait for Deployment ====================
+- name: Wait for tutum-engine deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-engine
+    namespace: "{{ k8s_tutum_namespace }}"
+  register: _k8s_deployment_status
+  until:
+    - _k8s_deployment_status.resources | length > 0
+    - _k8s_deployment_status.resources[0].status.readyReplicas is defined
+    - _k8s_deployment_status.resources[0].status.readyReplicas == k8s_tutum_engine_replicas
+  retries: 30
+  delay: 10
+
+# ==================== Verification ====================
+- name: Get tutum-engine pod name
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ k8s_tutum_namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name=tutum-engine
+  register: _k8s_pods
+
+- name: Display installation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Engine deployed successfully to Kubernetes!"
+      - ""
+      - "Namespace: {{ k8s_tutum_namespace }}"
+      - "Version: {{ k8s_tutum_engine_version }}"
+      - "Replicas: {{ k8s_tutum_engine_replicas }}"
+      - ""
+      - "Services:"
+      - "  - REST API: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_http_port }}"
+      - "  - gRPC API: tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_grpc_port }}"
+      - "  - Metrics: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_metrics_port }}/metrics"
+      - ""
+      - "Database: {{ k8s_tutum_postgres_host }}:{{ k8s_tutum_postgres_port }}/{{ k8s_tutum_postgres_db }}"
+      - ""
+      - "IMPORTANT - Save these secrets:"
+      - "  - TUTUM_MASTER_KEY: {{ k8s_tutum_master_key }}"
+      - "  - TUTUM_JWT_SECRET: {{ k8s_tutum_jwt_secret }}"

@@ -1,0 +1,105 @@
+---
+{% set kubelet_path = _k8s_kubelet_paths[k8s_distribution] | default(_k8s_kubelet_paths.standard) %}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tutum-csi-node
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: node
+    app.kubernetes.io/version: "{{ k8s_tutum_csi_version }}"
+    app.kubernetes.io/managed-by: ansible
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tutum-csi-driver
+      app.kubernetes.io/component: node
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tutum-csi-driver
+        app.kubernetes.io/component: node
+        app.kubernetes.io/version: "{{ k8s_tutum_csi_version }}"
+    spec:
+      serviceAccountName: tutum-csi-node
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: node-driver-registrar
+          image: {{ k8s_csi_node_driver_registrar_image }}:{{ k8s_csi_node_driver_registrar_version }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: {{ kubelet_path }}/plugins/{{ k8s_tutum_csi_driver_name }}/csi.sock
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+            requests:
+              cpu: "{{ k8s_tutum_csi_node_resources.registrar.requests.cpu }}"
+              memory: "{{ k8s_tutum_csi_node_resources.registrar.requests.memory }}"
+            limits:
+              cpu: "{{ k8s_tutum_csi_node_resources.registrar.limits.cpu }}"
+              memory: "{{ k8s_tutum_csi_node_resources.registrar.limits.memory }}"
+        - name: tutum-csi-driver
+          image: {{ k8s_tutum_csi_image }}:{{ k8s_tutum_csi_version }}
+          imagePullPolicy: Always
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(NODE_ID)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              mountPath: {{ kubelet_path }}/pods
+              mountPropagation: Bidirectional
+            - name: host-root
+              mountPath: /host
+              mountPropagation: HostToContainer
+              readOnly: true
+          resources:
+            requests:
+              cpu: "{{ k8s_tutum_csi_node_resources.driver.requests.cpu }}"
+              memory: "{{ k8s_tutum_csi_node_resources.driver.requests.memory }}"
+            limits:
+              cpu: "{{ k8s_tutum_csi_node_resources.driver.limits.cpu }}"
+              memory: "{{ k8s_tutum_csi_node_resources.driver.limits.memory }}"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: {{ kubelet_path }}/plugins/{{ k8s_tutum_csi_driver_name }}
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: {{ kubelet_path }}/plugins_registry
+            type: Directory
+        - name: pods-mount-dir
+          hostPath:
+            path: {{ kubelet_path }}/pods
+            type: Directory
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+      nodeSelector:
+        kubernetes.io/os: linux

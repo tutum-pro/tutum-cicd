@@ -1,0 +1,10 @@
+---
+# k8s_tutum_csi - Deploy Tutum CSI Driver to Kubernetes
+
+- name: Include install tasks
+  ansible.builtin.include_tasks: install.yml
+  when: k8s_tutum_csi_state == 'present'
+
+- name: Include uninstall tasks
+  ansible.builtin.include_tasks: uninstall.yml
+  when: k8s_tutum_csi_state == 'absent'

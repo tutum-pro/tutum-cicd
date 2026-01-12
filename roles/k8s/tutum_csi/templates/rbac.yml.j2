@@ -1,0 +1,107 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tutum-csi-controller
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: ansible
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tutum-csi-node
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: node
+    app.kubernetes.io/managed-by: ansible
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tutum-csi-controller-role
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: ansible
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tutum-csi-controller-binding
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: ansible
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tutum-csi-controller-role
+subjects:
+  - kind: ServiceAccount
+    name: tutum-csi-controller
+    namespace: {{ k8s_tutum_namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tutum-csi-node-role
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: node
+    app.kubernetes.io/managed-by: ansible
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tutum-csi-node-binding
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/component: node
+    app.kubernetes.io/managed-by: ansible
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tutum-csi-node-role
+subjects:
+  - kind: ServiceAccount
+    name: tutum-csi-node
+    namespace: {{ k8s_tutum_namespace }}

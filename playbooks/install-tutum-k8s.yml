@@ -1,0 +1,47 @@
+---
+# Tutum Platform - Full Kubernetes Installation
+#
+# Usage:
+#   ansible-playbook playbooks/install-tutum-k8s.yml \
+#     -e k8s_tutum_postgres_host=192.168.1.100 \
+#     -e k8s_tutum_postgres_password=secure-password
+#
+# For MicroK8s:
+#   ansible-playbook playbooks/install-tutum-k8s.yml \
+#     -e k8s_distribution=microk8s \
+#     -e k8s_tutum_postgres_host=192.168.1.100
+
+- name: Install Tutum Platform on Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    # Tutum Engine (core service)
+    - role: tutum_pro.cicd.k8s.tutum_engine
+
+    # CSI Driver (certificate volumes)
+    - role: tutum_pro.cicd.k8s.tutum_csi
+
+  post_tasks:
+    - name: Display installation summary
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "  Tutum Platform Installation Complete!"
+          - "=========================================="
+          - ""
+          - "Namespace: {{ k8s_tutum_namespace }}"
+          - ""
+          - "Tutum Engine:"
+          - "  - REST API: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:8080"
+          - "  - gRPC API: tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:9090"
+          - ""
+          - "CSI Driver:"
+          - "  - StorageClass: tutum-csi"
+          - "  - Driver: csi.tutum.io"
+          - ""
+          - "Verify deployment:"
+          - "  kubectl get pods -n {{ k8s_tutum_namespace }}"
+          - "  kubectl get csidriver"
+          - "  kubectl get storageclass tutum-csi"

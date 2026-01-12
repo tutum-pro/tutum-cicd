@@ -1,0 +1,69 @@
+---
+# k8s_tutum_csi - Uninstall tasks
+
+- name: Delete StorageClass
+  kubernetes.core.k8s:
+    state: absent
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: "{{ k8s_tutum_csi_storage_class_name }}"
+
+- name: Delete CSI Node DaemonSet
+  kubernetes.core.k8s:
+    state: absent
+    api_version: apps/v1
+    kind: DaemonSet
+    name: tutum-csi-node
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete CSI Controller Deployment
+  kubernetes.core.k8s:
+    state: absent
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-csi-controller
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete CSIDriver
+  kubernetes.core.k8s:
+    state: absent
+    api_version: storage.k8s.io/v1
+    kind: CSIDriver
+    name: "{{ k8s_tutum_csi_driver_name }}"
+
+- name: Delete ServiceAccounts
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: ServiceAccount
+    name: "{{ item }}"
+    namespace: "{{ k8s_tutum_namespace }}"
+  loop:
+    - tutum-csi-controller
+    - tutum-csi-node
+
+- name: Delete ClusterRoles
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: "{{ item }}"
+  loop:
+    - tutum-csi-controller-role
+    - tutum-csi-node-role
+
+- name: Delete ClusterRoleBindings
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: "{{ item }}"
+  loop:
+    - tutum-csi-controller-binding
+    - tutum-csi-node-binding
+
+- name: Display uninstall result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum CSI Driver uninstalled from Kubernetes!"
+      - "Namespace {{ k8s_tutum_namespace }} was NOT deleted (may contain other resources)."

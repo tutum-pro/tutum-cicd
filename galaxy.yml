@@ -3,15 +3,26 @@
 ---
 namespace: tutum_pro
 name: cicd
-version: "1.3.2"
+version: "1.4.0"
 readme: README.md
 authors:
   - Tutum Pro Team
 
 description: |
   Ansible collection for deploying Tutum Pro certificate management platform.
-  Includes roles for installing Tutum Engine, PostgreSQL, Docker Volume Plugin,
-  and Admin CLI.
+  Supports both Docker and Kubernetes deployments.
+
+  Docker roles:
+    - tutum_engine: Tutum Engine container
+    - tutum_postgres: PostgreSQL database container
+    - tutum_plugin: Docker volume plugin for certificates
+    - tutum_cli: Admin CLI container
+    - tutum_init: Installation file generator
+
+  Kubernetes roles:
+    - k8s.tutum_engine: Tutum Engine Deployment
+    - k8s.tutum_csi: CSI Driver for certificate volumes
+    - k8s.tutum_init: K8s installation playbook generator
 
 license:
   - MIT
@@ -23,8 +34,11 @@ tags:
   - pki
   - docker
   - kubernetes
+  - csi
+  - csi-driver
 
-dependencies: {}
+dependencies:
+  kubernetes.core: ">=2.4.0"
 
 repository: https://github.com/tutum-pro/tutum-cicd
 documentation: https://www.tutum-pro.io

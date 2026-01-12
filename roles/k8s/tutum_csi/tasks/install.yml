@@ -1,0 +1,139 @@
+---
+# k8s_tutum_csi - Installation tasks
+
+# ==================== Validation ====================
+- name: Validate k8s_distribution
+  ansible.builtin.assert:
+    that:
+      - k8s_distribution in _k8s_kubelet_paths.keys()
+    fail_msg: |
+      Invalid k8s_distribution: '{{ k8s_distribution }}'
+      Valid options: {{ _k8s_kubelet_paths.keys() | list }}
+
+- name: Check kubectl connectivity
+  ansible.builtin.command: kubectl cluster-info
+  changed_when: false
+
+- name: Set kubelet path based on distribution
+  ansible.builtin.set_fact:
+    _k8s_kubelet_path: "{{ _k8s_kubelet_paths[k8s_distribution] }}"
+
+- name: Display configuration
+  ansible.builtin.debug:
+    msg:
+      - "Kubernetes distribution: {{ k8s_distribution }}"
+      - "Kubelet path: {{ _k8s_kubelet_path }}"
+      - "Tutum Engine URL: {{ k8s_tutum_engine_url }}"
+
+# ==================== Namespace ====================
+- name: Ensure namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k8s_tutum_namespace }}"
+        labels:
+          app.kubernetes.io/name: tutum
+          app.kubernetes.io/managed-by: ansible
+
+# ==================== RBAC ====================
+- name: Create RBAC resources
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ item }}"
+  loop: "{{ lookup('template', 'rbac.yml.j2') | from_yaml_all | list }}"
+  loop_control:
+    label: "{{ item.kind }}/{{ item.metadata.name }}"
+
+# ==================== CSIDriver ====================
+- name: Create CSIDriver resource
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'csidriver.yml.j2') | from_yaml }}"
+
+# ==================== Controller Deployment ====================
+- name: Deploy CSI Controller
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'controller.yml.j2') | from_yaml }}"
+
+# ==================== Node DaemonSet ====================
+- name: Deploy CSI Node DaemonSet
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'daemonset.yml.j2') | from_yaml }}"
+
+# ==================== StorageClass ====================
+- name: Create StorageClass
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'storageclass.yml.j2') | from_yaml }}"
+
+# ==================== Wait for Deployment ====================
+- name: Wait for CSI Controller to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-csi-controller
+    namespace: "{{ k8s_tutum_namespace }}"
+  register: _k8s_csi_controller
+  until:
+    - _k8s_csi_controller.resources | length > 0
+    - _k8s_csi_controller.resources[0].status.readyReplicas is defined
+    - _k8s_csi_controller.resources[0].status.readyReplicas >= 1
+  retries: 30
+  delay: 10
+
+- name: Wait for CSI Node DaemonSet to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: DaemonSet
+    name: tutum-csi-node
+    namespace: "{{ k8s_tutum_namespace }}"
+  register: _k8s_csi_node
+  until:
+    - _k8s_csi_node.resources | length > 0
+    - _k8s_csi_node.resources[0].status.numberReady is defined
+    - _k8s_csi_node.resources[0].status.numberReady == _k8s_csi_node.resources[0].status.desiredNumberScheduled
+  retries: 30
+  delay: 10
+
+# ==================== Verification ====================
+- name: Verify CSIDriver is registered
+  kubernetes.core.k8s_info:
+    api_version: storage.k8s.io/v1
+    kind: CSIDriver
+    name: "{{ k8s_tutum_csi_driver_name }}"
+  register: _k8s_csi_driver
+  failed_when: _k8s_csi_driver.resources | length == 0
+
+- name: Display installation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum CSI Driver deployed successfully!"
+      - ""
+      - "Namespace: {{ k8s_tutum_namespace }}"
+      - "CSI Driver version: {{ k8s_tutum_csi_version }}"
+      - "Kubernetes distribution: {{ k8s_distribution }}"
+      - "Kubelet path: {{ _k8s_kubelet_path }}"
+      - ""
+      - "Components:"
+      - "  - CSI Controller: {{ _k8s_csi_controller.resources[0].status.readyReplicas | default(0) }}/1 ready"
+      - "  - CSI Node: {{ _k8s_csi_node.resources[0].status.numberReady | default(0) }}/{{ _k8s_csi_node.resources[0].status.desiredNumberScheduled | default(0) }} ready"
+      - ""
+      - "StorageClass: {{ k8s_tutum_csi_storage_class_name }}"
+      - "Tutum Engine URL: {{ k8s_tutum_engine_url }}"
+      - ""
+      - "Usage example (PVC):"
+      - "  apiVersion: v1"
+      - "  kind: PersistentVolumeClaim"
+      - "  metadata:"
+      - "    name: my-cert"
+      - "  spec:"
+      - "    storageClassName: {{ k8s_tutum_csi_storage_class_name }}"
+      - "    accessModes: [ReadOnlyMany]"
+      - "    resources:"
+      - "      requests:"
+      - "        storage: 1Mi"

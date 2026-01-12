@@ -1,0 +1,38 @@
+---
+# k8s_tutum_init role defaults
+# Generator for Kubernetes manifests and playbooks
+
+# Output paths
+k8s_tutum_init_output_path: "."
+k8s_tutum_init_manifests_dir: "k8s-manifests"
+k8s_tutum_init_playbook_file: "tutum-k8s-install.yml"
+
+# Overwrite existing files
+k8s_tutum_init_overwrite: false
+
+# Component versions
+# IMPORTANT: These values MUST be synchronized with the respective role defaults
+k8s_tutum_engine_version: "4.2.2"
+k8s_tutum_csi_version: "3.1.0"
+
+# Namespace
+k8s_tutum_namespace: "tutum-system"
+
+# Kubernetes distribution
+# Options: "standard", "microk8s", "k3s", "openshift"
+k8s_tutum_init_distribution: "standard"
+
+# PostgreSQL connection (required)
+k8s_tutum_init_postgres_host: ""
+k8s_tutum_init_postgres_port: "5432"
+k8s_tutum_init_postgres_db: "tutum"
+k8s_tutum_init_postgres_user: "tutum"
+k8s_tutum_init_postgres_password: "tutum"
+
+# Security keys (leave empty to auto-generate)
+k8s_tutum_init_master_key: ""
+k8s_tutum_init_jwt_secret: ""
+
+# Generate components
+k8s_tutum_init_generate_engine: true
+k8s_tutum_init_generate_csi: true

@@ -163,13 +163,68 @@ Installs Tutum Admin CLI container.
 
 Generates version report of installed Docker components.
 
-### Kubernetes Roles (`k8s.*`) - Coming Soon
+### Kubernetes Roles (`k8s.*`)
 
-For deployment on Kubernetes clusters. Will be located in `roles/k8s/`.
-Variables will use `k8s_tutum_` prefix.
+For deployment on Kubernetes clusters. Located in `roles/k8s/`.
+All variables use `k8s_tutum_` prefix.
 
-- `tutum_pro.cicd.k8s.tutum_engine` - Tutum Engine Helm chart deployment
-- `tutum_pro.cicd.k8s.tutum_csi_driver` - Kubernetes CSI driver for certificates
+#### tutum_pro.cicd.k8s.tutum_engine
+
+Deploys Tutum Engine to Kubernetes cluster.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_engine_version` | `4.2.2` | Tutum Engine version |
+| `k8s_tutum_namespace` | `tutum-system` | Kubernetes namespace |
+| `k8s_tutum_postgres_host` | `""` | **Required**: PostgreSQL host |
+| `k8s_tutum_postgres_port` | `5432` | PostgreSQL port |
+| `k8s_tutum_postgres_db` | `tutum` | Database name |
+| `k8s_tutum_postgres_user` | `tutum` | Database user |
+| `k8s_tutum_postgres_password` | `tutum` | Database password |
+| `k8s_tutum_master_key` | (generated) | 32-char AES-256 encryption key |
+| `k8s_tutum_jwt_secret` | (generated) | 32-char JWT secret |
+| `k8s_tutum_engine_state` | `present` | `present` or `absent` |
+
+#### tutum_pro.cicd.k8s.tutum_csi
+
+Deploys Tutum CSI Driver to Kubernetes for certificate volume provisioning.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_csi_version` | `3.1.0` | CSI Driver version |
+| `k8s_tutum_namespace` | `tutum-system` | Kubernetes namespace |
+| `k8s_distribution` | `standard` | K8s distribution: `standard`, `microk8s`, `k3s`, `openshift` |
+| `k8s_tutum_engine_url` | `tutum-engine.tutum-system.svc.cluster.local:9090` | Tutum Engine gRPC URL |
+| `k8s_tutum_csi_storage_class_name` | `tutum-csi` | StorageClass name |
+| `k8s_tutum_csi_state` | `present` | `present` or `absent` |
+
+#### tutum_pro.cicd.k8s.tutum_init
+
+Generates Kubernetes installation playbook (similar to `docker.tutum_init`).
+
+```bash
+# Generate K8s installation files
+ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
+  -e k8s_tutum_init_postgres_host=192.168.1.100 \
+  -e k8s_tutum_init_distribution=microk8s
+```
+
+### Kubernetes Quick Start
+
+```bash
+# Deploy to Kubernetes (requires external PostgreSQL)
+ansible-playbook playbooks/install-tutum-k8s.yml \
+  -e k8s_tutum_postgres_host=192.168.1.100 \
+  -e k8s_tutum_postgres_password=secure-password
+
+# For MicroK8s
+ansible-playbook playbooks/install-tutum-k8s.yml \
+  -e k8s_distribution=microk8s \
+  -e k8s_tutum_postgres_host=192.168.1.100
+
+# Uninstall from Kubernetes
+ansible-playbook playbooks/uninstall-tutum-k8s.yml
+```
 
 ## Example: External Project
 
@@ -237,10 +292,12 @@ tutum-cicd/
 │   │   ├── tutum_engine/     # Tutum Engine (+ migrations)
 │   │   ├── tutum_plugin/     # Volume Plugin
 │   │   ├── tutum_cli/        # Admin CLI
+│   │   ├── tutum_init/       # Installation file generator
 │   │   └── tutum_report/     # Version report
-│   └── k8s/                  # (future) Kubernetes roles (k8s_tutum_* vars)
-│       ├── tutum_engine/
-│       └── tutum_csi_driver/
+│   └── k8s/                  # Kubernetes roles (k8s_tutum_* vars)
+│       ├── tutum_engine/     # Tutum Engine Deployment
+│       ├── tutum_csi/        # CSI Driver (controller + node)
+│       └── tutum_init/       # K8s playbook generator
 ├── playbooks/
 │   ├── site.yml              # Full stack installation
 │   ├── engine.yml            # Engine only

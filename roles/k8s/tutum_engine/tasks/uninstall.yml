@@ -1,0 +1,65 @@
+---
+# k8s_tutum_engine - Uninstall tasks
+
+- name: Delete tutum-engine Deployment
+  kubernetes.core.k8s:
+    state: absent
+    api_version: apps/v1
+    kind: Deployment
+    name: tutum-engine
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete tutum-engine Services
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Service
+    name: "{{ item }}"
+    namespace: "{{ k8s_tutum_namespace }}"
+  loop:
+    - tutum-engine
+    - tutum-engine-headless
+
+- name: Delete tutum-engine ConfigMap
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: ConfigMap
+    name: tutum-engine-config
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete tutum-engine Secret
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Secret
+    name: tutum-engine-secret
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete tutum-engine ServiceAccount
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: ServiceAccount
+    name: tutum-engine
+    namespace: "{{ k8s_tutum_namespace }}"
+
+- name: Delete ClusterRole
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: tutum-engine-pod-restarter
+
+- name: Delete ClusterRoleBinding
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: tutum-engine-pod-restarter
+
+- name: Display uninstall result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Engine uninstalled from Kubernetes!"
+      - "Namespace {{ k8s_tutum_namespace }} was NOT deleted (may contain other resources)."

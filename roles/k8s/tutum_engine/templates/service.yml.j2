@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tutum-engine
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: ansible
+spec:
+  type: {{ k8s_tutum_engine_service_type }}
+  ports:
+    - name: http
+      port: {{ k8s_tutum_engine_http_port }}
+      targetPort: {{ k8s_tutum_engine_http_port }}
+      protocol: TCP
+    - name: grpc
+      port: {{ k8s_tutum_engine_grpc_port }}
+      targetPort: {{ k8s_tutum_engine_grpc_port }}
+      protocol: TCP
+    - name: metrics
+      port: {{ k8s_tutum_engine_metrics_port }}
+      targetPort: {{ k8s_tutum_engine_metrics_port }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tutum-engine-headless
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: ansible
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: {{ k8s_tutum_engine_http_port }}
+      targetPort: {{ k8s_tutum_engine_http_port }}
+      protocol: TCP
+    - name: grpc
+      port: {{ k8s_tutum_engine_grpc_port }}
+      targetPort: {{ k8s_tutum_engine_grpc_port }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend

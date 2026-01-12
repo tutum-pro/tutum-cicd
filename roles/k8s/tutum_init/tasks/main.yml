@@ -1,0 +1,36 @@
+---
+# k8s_tutum_init - Generate Kubernetes installation files
+
+- name: Ensure output directory exists
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_init_output_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Check if playbook file exists
+  ansible.builtin.stat:
+    path: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+  register: _k8s_tutum_init_playbook_exists
+
+- name: Generate installation playbook
+  ansible.builtin.template:
+    src: playbook.yml.j2
+    dest: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+    mode: '0644'
+  when: k8s_tutum_init_overwrite | bool or not _k8s_tutum_init_playbook_exists.stat.exists
+
+- name: Display generated files info
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Platform Kubernetes installation files generated!"
+      - ""
+      - "Generated files:"
+      - "  - Playbook: {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+      - ""
+      - "Configuration:"
+      - "  - Namespace: {{ k8s_tutum_namespace }}"
+      - "  - Distribution: {{ k8s_tutum_init_distribution }}"
+      - "  - PostgreSQL: {{ k8s_tutum_init_postgres_host }}:{{ k8s_tutum_init_postgres_port }}/{{ k8s_tutum_init_postgres_db }}"
+      - ""
+      - "To install Tutum Platform on Kubernetes, run:"
+      - "  ansible-playbook {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"

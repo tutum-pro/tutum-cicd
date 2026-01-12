@@ -1,0 +1,75 @@
+---
+# k8s_tutum_csi role defaults
+
+# Component versions
+# IMPORTANT: These values MUST be synchronized with the respective role defaults
+k8s_tutum_csi_version: "3.1.0"
+k8s_csi_provisioner_version: "v3.6.0"
+k8s_csi_node_driver_registrar_version: "v2.9.0"
+
+# Namespace
+k8s_tutum_namespace: "tutum-system"
+
+# Images
+k8s_tutum_csi_image: "tutumpro/tutum-csi-driver-k8s"
+k8s_csi_provisioner_image: "registry.k8s.io/sig-storage/csi-provisioner"
+k8s_csi_node_driver_registrar_image: "registry.k8s.io/sig-storage/csi-node-driver-registrar"
+
+# Tutum Engine connection (for StorageClass)
+k8s_tutum_engine_url: "tutum-engine.tutum-system.svc.cluster.local:9090"
+
+# Kubernetes distribution for kubelet paths
+# Options: "standard", "microk8s", "k3s", "openshift"
+k8s_distribution: "standard"
+
+# Kubelet paths per distribution
+_k8s_kubelet_paths:
+  standard: "/var/lib/kubelet"
+  microk8s: "/var/snap/microk8s/common/var/lib/kubelet"
+  k3s: "/var/lib/rancher/k3s/agent"
+  openshift: "/var/lib/kubelet"
+
+# CSI Driver name
+k8s_tutum_csi_driver_name: "csi.tutum.io"
+
+# StorageClass configuration
+k8s_tutum_csi_storage_class_name: "tutum-csi"
+k8s_tutum_csi_volume_binding_mode: "Immediate"
+k8s_tutum_csi_reclaim_policy: "Delete"
+
+# Controller resources
+k8s_tutum_csi_controller_resources:
+  provisioner:
+    requests:
+      cpu: "10m"
+      memory: "64Mi"
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+  driver:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# Node resources
+k8s_tutum_csi_node_resources:
+  registrar:
+    requests:
+      cpu: "10m"
+      memory: "64Mi"
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+  driver:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# Action: present or absent
+k8s_tutum_csi_state: "present"

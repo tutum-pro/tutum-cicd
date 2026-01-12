@@ -1,0 +1,14 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: {{ k8s_tutum_csi_driver_name }}
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/managed-by: ansible
+spec:
+  attachRequired: false
+  podInfoOnMount: true
+  volumeLifecycleModes:
+    - Ephemeral
+    - Persistent

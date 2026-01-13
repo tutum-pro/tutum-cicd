@@ -114,10 +114,15 @@ volumes:
     csi:
       driver: csi.tutum.io
       volumeAttributes:
-        namespace: "production"
-        group: "web-servers"
-        certificate: "tls-cert"
+        engineUrl: "tutum-engine.tutum-system.svc.cluster.local:9090"  # Required for ephemeral volumes
+        certificateName: "tls-cert"
+        namespace: "production"      # Tutum certificate namespace
+        groupID: "web-servers"       # Tutum certificate group
 ```
+
+> **Note**: For ephemeral inline volumes, you must provide `engineUrl` in `volumeAttributes`
+> since these volumes don't use the StorageClass parameters. For tree mode (all certificates
+> with given name), omit `namespace` and `groupID`.
 
 ## License
 

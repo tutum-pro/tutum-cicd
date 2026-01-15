@@ -1,0 +1,91 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tutum-engine
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: ansible
+{% if k8s_tutum_engine_ingress_annotations %}
+  annotations:
+{% for key, value in k8s_tutum_engine_ingress_annotations.items() %}
+    {{ key }}: "{{ value }}"
+{% endfor %}
+{% endif %}
+spec:
+{% if k8s_tutum_engine_ingress_class_name %}
+  ingressClassName: {{ k8s_tutum_engine_ingress_class_name }}
+{% endif %}
+{% if k8s_tutum_engine_ingress_tls_enabled and k8s_tutum_engine_ingress_host %}
+  tls:
+    - hosts:
+        - {{ k8s_tutum_engine_ingress_host }}
+{% if k8s_tutum_engine_ingress_tls_secret_name %}
+      secretName: {{ k8s_tutum_engine_ingress_tls_secret_name }}
+{% endif %}
+{% endif %}
+  rules:
+{% if k8s_tutum_engine_ingress_host %}
+    - host: {{ k8s_tutum_engine_ingress_host }}
+      http:
+{% else %}
+    - http:
+{% endif %}
+        paths:
+          - path: {{ k8s_tutum_engine_ingress_path }}
+            pathType: {{ k8s_tutum_engine_ingress_path_type }}
+            backend:
+              service:
+                name: tutum-engine
+                port:
+                  number: {{ k8s_tutum_engine_http_port }}
+{% if k8s_tutum_engine_ingress_grpc_enabled %}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tutum-engine-grpc
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: backend-grpc
+    app.kubernetes.io/managed-by: ansible
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+{% if k8s_tutum_engine_ingress_annotations %}
+{% for key, value in k8s_tutum_engine_ingress_annotations.items() %}
+{% if key != 'nginx.ingress.kubernetes.io/backend-protocol' %}
+    {{ key }}: "{{ value }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+spec:
+{% if k8s_tutum_engine_ingress_class_name %}
+  ingressClassName: {{ k8s_tutum_engine_ingress_class_name }}
+{% endif %}
+{% if k8s_tutum_engine_ingress_tls_enabled and k8s_tutum_engine_ingress_grpc_host %}
+  tls:
+    - hosts:
+        - {{ k8s_tutum_engine_ingress_grpc_host }}
+{% if k8s_tutum_engine_ingress_tls_secret_name %}
+      secretName: {{ k8s_tutum_engine_ingress_tls_secret_name }}
+{% endif %}
+{% endif %}
+  rules:
+{% if k8s_tutum_engine_ingress_grpc_host %}
+    - host: {{ k8s_tutum_engine_ingress_grpc_host }}
+      http:
+{% else %}
+    - http:
+{% endif %}
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tutum-engine-grpc
+                port:
+                  number: {{ k8s_tutum_engine_grpc_port }}
+{% endif %}

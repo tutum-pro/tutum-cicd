@@ -2,49 +2,65 @@
 # Install PostgreSQL to Kubernetes
 
 - name: Create namespace
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ k8s_tutum_namespace }}"
-        labels:
-          app.kubernetes.io/name: tutum
-          app.kubernetes.io/component: database
+  ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  changed_when: false
 
-- name: Create PostgreSQL Secret
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'secret.yml.j2') | from_yaml }}"
+- name: Generate PostgreSQL Secret manifest
+  ansible.builtin.template:
+    src: secret.yml.j2
+    dest: /tmp/tutum-postgres-secret.yml
+    mode: '0600'
 
-- name: Create PostgreSQL PersistentVolumeClaim
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'pvc.yml.j2') | from_yaml }}"
+- name: Apply PostgreSQL Secret
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-postgres-secret.yml
+  changed_when: true
 
-- name: Create PostgreSQL Deployment
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'deployment.yml.j2') | from_yaml }}"
+- name: Generate PostgreSQL PVC manifest
+  ansible.builtin.template:
+    src: pvc.yml.j2
+    dest: /tmp/tutum-postgres-pvc.yml
+    mode: '0600'
 
-- name: Create PostgreSQL Service
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'service.yml.j2') | from_yaml }}"
+- name: Apply PostgreSQL PVC
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-postgres-pvc.yml
+  changed_when: true
+
+- name: Generate PostgreSQL Deployment manifest
+  ansible.builtin.template:
+    src: deployment.yml.j2
+    dest: /tmp/tutum-postgres-deployment.yml
+    mode: '0600'
+
+- name: Apply PostgreSQL Deployment
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-postgres-deployment.yml
+  changed_when: true
+
+- name: Generate PostgreSQL Service manifest
+  ansible.builtin.template:
+    src: service.yml.j2
+    dest: /tmp/tutum-postgres-service.yml
+    mode: '0600'
+
+- name: Apply PostgreSQL Service
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-postgres-service.yml
+  changed_when: true
+
+# Cleanup temp files
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/tutum-postgres-secret.yml
+    - /tmp/tutum-postgres-pvc.yml
+    - /tmp/tutum-postgres-deployment.yml
+    - /tmp/tutum-postgres-service.yml
 
 - name: Wait for PostgreSQL to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: tutum-postgres
-    namespace: "{{ k8s_tutum_namespace }}"
-  register: postgres_deployment
-  until: >-
-    postgres_deployment.resources | length > 0 and
-    postgres_deployment.resources[0].status.readyReplicas | default(0) >= 1
-  retries: 30
-  delay: 10
+  ansible.builtin.command: >
+    kubectl rollout status deployment/tutum-postgres
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
 
 - name: Display PostgreSQL deployment info
   ansible.builtin.debug:

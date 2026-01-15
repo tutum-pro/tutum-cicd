@@ -27,87 +27,107 @@
 
 # ==================== Namespace ====================
 - name: Ensure namespace exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ k8s_tutum_namespace }}"
-        labels:
-          app.kubernetes.io/name: tutum
-          app.kubernetes.io/managed-by: ansible
+  ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  changed_when: false
 
 # ==================== RBAC ====================
-- name: Create RBAC resources
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ item }}"
-  loop: "{{ lookup('template', 'rbac.yml.j2') | from_yaml_all | list }}"
-  loop_control:
-    label: "{{ item.kind }}/{{ item.metadata.name }}"
+- name: Generate RBAC manifest
+  ansible.builtin.template:
+    src: rbac.yml.j2
+    dest: /tmp/tutum-csi-rbac.yml
+    mode: '0600'
+
+- name: Apply RBAC resources
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-csi-rbac.yml
+  changed_when: true
 
 # ==================== CSIDriver ====================
-- name: Create CSIDriver resource
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'csidriver.yml.j2') | from_yaml }}"
+- name: Generate CSIDriver manifest
+  ansible.builtin.template:
+    src: csidriver.yml.j2
+    dest: /tmp/tutum-csi-driver.yml
+    mode: '0600'
+
+- name: Apply CSIDriver resource
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-csi-driver.yml
+  changed_when: true
 
 # ==================== Controller Deployment ====================
-- name: Deploy CSI Controller
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'controller.yml.j2') | from_yaml }}"
+- name: Generate CSI Controller manifest
+  ansible.builtin.template:
+    src: controller.yml.j2
+    dest: /tmp/tutum-csi-controller.yml
+    mode: '0600'
+
+- name: Apply CSI Controller
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-csi-controller.yml
+  changed_when: true
 
 # ==================== Node DaemonSet ====================
-- name: Deploy CSI Node DaemonSet
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'daemonset.yml.j2') | from_yaml }}"
+- name: Generate CSI Node DaemonSet manifest
+  ansible.builtin.template:
+    src: daemonset.yml.j2
+    dest: /tmp/tutum-csi-daemonset.yml
+    mode: '0600'
+
+- name: Apply CSI Node DaemonSet
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-csi-daemonset.yml
+  changed_when: true
 
 # ==================== StorageClass ====================
-- name: Create StorageClass
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'storageclass.yml.j2') | from_yaml }}"
+- name: Generate StorageClass manifest
+  ansible.builtin.template:
+    src: storageclass.yml.j2
+    dest: /tmp/tutum-csi-storageclass.yml
+    mode: '0600'
+
+- name: Apply StorageClass
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-csi-storageclass.yml
+  changed_when: true
+
+# ==================== Cleanup temp files ====================
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/tutum-csi-rbac.yml
+    - /tmp/tutum-csi-driver.yml
+    - /tmp/tutum-csi-controller.yml
+    - /tmp/tutum-csi-daemonset.yml
+    - /tmp/tutum-csi-storageclass.yml
 
 # ==================== Wait for Deployment ====================
 - name: Wait for CSI Controller to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: tutum-csi-controller
-    namespace: "{{ k8s_tutum_namespace }}"
-  register: _k8s_csi_controller
-  until:
-    - _k8s_csi_controller.resources | length > 0
-    - _k8s_csi_controller.resources[0].status.readyReplicas is defined
-    - _k8s_csi_controller.resources[0].status.readyReplicas >= 1
-  retries: 30
-  delay: 10
+  ansible.builtin.command: >
+    kubectl rollout status deployment/tutum-csi-controller
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
 
 - name: Wait for CSI Node DaemonSet to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: DaemonSet
-    name: tutum-csi-node
-    namespace: "{{ k8s_tutum_namespace }}"
-  register: _k8s_csi_node
-  until:
-    - _k8s_csi_node.resources | length > 0
-    - _k8s_csi_node.resources[0].status.numberReady is defined
-    - _k8s_csi_node.resources[0].status.numberReady == _k8s_csi_node.resources[0].status.desiredNumberScheduled
-  retries: 30
-  delay: 10
+  ansible.builtin.command: >
+    kubectl rollout status daemonset/tutum-csi-node
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
 
 # ==================== Verification ====================
 - name: Verify CSIDriver is registered
-  kubernetes.core.k8s_info:
-    api_version: storage.k8s.io/v1
-    kind: CSIDriver
-    name: "{{ k8s_tutum_csi_driver_name }}"
-  register: _k8s_csi_driver
-  failed_when: _k8s_csi_driver.resources | length == 0
+  ansible.builtin.command: kubectl get csidriver {{ k8s_tutum_csi_driver_name }}
+  changed_when: false
+
+- name: Get CSI Controller status
+  ansible.builtin.command: >
+    kubectl get deployment tutum-csi-controller -n {{ k8s_tutum_namespace }}
+    -o jsonpath='{.status.readyReplicas}'
+  register: _csi_controller_ready
+  changed_when: false
+
+- name: Get CSI Node status
+  ansible.builtin.command: >
+    kubectl get daemonset tutum-csi-node -n {{ k8s_tutum_namespace }}
+    -o jsonpath='{.status.numberReady}/{.status.desiredNumberScheduled}'
+  register: _csi_node_ready
+  changed_when: false
 
 - name: Display installation result
   ansible.builtin.debug:
@@ -120,8 +140,8 @@
       - "Kubelet path: {{ _k8s_kubelet_path }}"
       - ""
       - "Components:"
-      - "  - CSI Controller: {{ _k8s_csi_controller.resources[0].status.readyReplicas | default(0) }}/1 ready"
-      - "  - CSI Node: {{ _k8s_csi_node.resources[0].status.numberReady | default(0) }}/{{ _k8s_csi_node.resources[0].status.desiredNumberScheduled | default(0) }} ready"
+      - "  - CSI Controller: {{ _csi_controller_ready.stdout | default('0') }}/1 ready"
+      - "  - CSI Node: {{ _csi_node_ready.stdout | default('0/0') }} ready"
       - ""
       - "StorageClass: {{ k8s_tutum_csi_storage_class_name }}"
       - "Tutum Engine URL: {{ k8s_tutum_engine_url }}"

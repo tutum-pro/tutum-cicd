@@ -7,10 +7,33 @@
     state: directory
     mode: '0755'
 
+- name: Ensure inventory directory exists
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_inventory_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Check if inventory file exists
+  ansible.builtin.stat:
+    path: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_inventory_path }}/{{ k8s_tutum_init_inventory_file }}"
+  register: _k8s_tutum_init_inventory_exists
+
 - name: Check if playbook file exists
   ansible.builtin.stat:
     path: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
   register: _k8s_tutum_init_playbook_exists
+
+- name: Check if uninstall playbook file exists
+  ansible.builtin.stat:
+    path: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_uninstall_playbook_file }}"
+  register: _k8s_tutum_init_uninstall_playbook_exists
+
+- name: Generate inventory file
+  ansible.builtin.template:
+    src: k8s.ini.j2
+    dest: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_inventory_path }}/{{ k8s_tutum_init_inventory_file }}"
+    mode: '0644'
+  when: k8s_tutum_init_overwrite | bool or not _k8s_tutum_init_inventory_exists.stat.exists
 
 - name: Generate installation playbook
   ansible.builtin.template:
@@ -19,18 +42,32 @@
     mode: '0644'
   when: k8s_tutum_init_overwrite | bool or not _k8s_tutum_init_playbook_exists.stat.exists
 
+- name: Generate uninstall playbook
+  ansible.builtin.template:
+    src: uninstall-playbook.yml.j2
+    dest: "{{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_uninstall_playbook_file }}"
+    mode: '0644'
+  when:
+    - k8s_tutum_init_generate_uninstall | bool
+    - k8s_tutum_init_overwrite | bool or not _k8s_tutum_init_uninstall_playbook_exists.stat.exists
+
 - name: Display generated files info
   ansible.builtin.debug:
     msg:
       - "Tutum Platform Kubernetes installation files generated!"
       - ""
       - "Generated files:"
-      - "  - Playbook: {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+      - "  - Inventory:  {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_inventory_path }}/{{ k8s_tutum_init_inventory_file }}"
+      - "  - Install:    {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+      - "  - Uninstall:  {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_uninstall_playbook_file }}"
       - ""
       - "Configuration:"
       - "  - Namespace: {{ k8s_tutum_namespace }}"
       - "  - Distribution: {{ k8s_tutum_init_distribution }}"
-      - "  - PostgreSQL: {{ k8s_tutum_init_postgres_host }}:{{ k8s_tutum_init_postgres_port }}/{{ k8s_tutum_init_postgres_db }}"
+      - "  - Database mode: {{ k8s_tutum_init_db_mode }}"
       - ""
       - "To install Tutum Platform on Kubernetes, run:"
-      - "  ansible-playbook {{ k8s_tutum_init_output_path }}/{{ k8s_tutum_init_playbook_file }}"
+      - "  ansible-playbook -i {{ k8s_tutum_init_inventory_path }}/{{ k8s_tutum_init_inventory_file }} {{ k8s_tutum_init_playbook_file }}"
+      - ""
+      - "To uninstall Tutum Platform from Kubernetes, run:"
+      - "  ansible-playbook -i {{ k8s_tutum_init_inventory_path }}/{{ k8s_tutum_init_inventory_file }} {{ k8s_tutum_init_uninstall_playbook_file }}"

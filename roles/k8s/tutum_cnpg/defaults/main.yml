@@ -1,0 +1,108 @@
+---
+# k8s_tutum_cnpg role defaults
+# CloudNativePG operator and cluster configuration
+
+# Namespace for Tutum Platform components (tutum-engine, tutum-csi)
+k8s_tutum_namespace: "tutum-system"
+
+# Namespace for PostgreSQL cluster (dedicated, separate from tutum-system)
+k8s_tutum_cnpg_namespace: "pgdb"
+
+# ==================== CNPG Operator ====================
+
+# CNPG operator version
+k8s_tutum_cnpg_operator_version: "1.25.0"
+
+# Operator namespace (separate from cluster namespace)
+k8s_tutum_cnpg_operator_namespace: "cnpg-system"
+
+# Install operator (set to false if already installed cluster-wide)
+k8s_tutum_cnpg_install_operator: true
+
+# ==================== PostgreSQL Cluster ====================
+
+# Cluster name
+k8s_tutum_cnpg_cluster_name: "tutum-postgres"
+
+# PostgreSQL version (major version only, CNPG handles minor versions)
+k8s_tutum_cnpg_postgres_version: "16"
+
+# Number of instances (1 primary + N-1 replicas)
+k8s_tutum_cnpg_instances: 1
+
+# PostgreSQL image (empty = use CNPG default)
+k8s_tutum_cnpg_image: ""
+
+# Image pull policy
+k8s_tutum_cnpg_image_pull_policy: "IfNotPresent"
+
+# ==================== Storage ====================
+
+# Storage class (empty = default storage class)
+k8s_tutum_cnpg_storage_class: ""
+
+# Storage size per instance
+k8s_tutum_cnpg_storage_size: "5Gi"
+
+# ==================== Database Configuration ====================
+
+# Database name
+k8s_tutum_cnpg_db_name: "tutum"
+
+# Database owner/user
+k8s_tutum_cnpg_db_user: "tutum"
+
+# Database password (leave empty to auto-generate)
+k8s_tutum_cnpg_db_password: ""
+
+# Superuser password (leave empty to auto-generate)
+k8s_tutum_cnpg_superuser_password: ""
+
+# ==================== Resource Limits ====================
+
+k8s_tutum_cnpg_resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+# ==================== PostgreSQL Parameters ====================
+
+# PostgreSQL configuration parameters
+# Note: Some parameters are fixed by CNPG and cannot be changed (e.g., log_destination)
+k8s_tutum_cnpg_postgres_parameters:
+  shared_buffers: "256MB"
+  max_connections: "100"
+  log_statement: "ddl"
+
+# pg_hba.conf entries (additional to defaults)
+k8s_tutum_cnpg_pg_hba: []
+# Example:
+# - host all all 10.0.0.0/8 scram-sha-256
+
+# ==================== Monitoring ====================
+
+# Enable Prometheus PodMonitor
+k8s_tutum_cnpg_enable_monitoring: false
+
+# ==================== Connection Pooling (PgBouncer) ====================
+
+# Enable PgBouncer pooler
+k8s_tutum_cnpg_enable_pooler: false
+
+# Pooler instances
+k8s_tutum_cnpg_pooler_instances: 1
+
+# Pooler mode: session, transaction, statement
+k8s_tutum_cnpg_pooler_mode: "transaction"
+
+# ==================== State ====================
+
+# Action: present or absent
+k8s_tutum_cnpg_state: "present"
+
+# Uninstall options
+k8s_tutum_cnpg_remove_operator: false
+k8s_tutum_cnpg_remove_data: false

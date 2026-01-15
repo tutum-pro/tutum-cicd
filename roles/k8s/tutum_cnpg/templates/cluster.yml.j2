@@ -1,0 +1,77 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ k8s_tutum_cnpg_cluster_name }}
+  namespace: {{ k8s_tutum_cnpg_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum
+    app.kubernetes.io/component: database
+spec:
+  instances: {{ k8s_tutum_cnpg_instances }}
+
+{% if k8s_tutum_cnpg_image %}
+  imageName: {{ k8s_tutum_cnpg_image }}
+{% else %}
+  # Use default CNPG image for PostgreSQL {{ k8s_tutum_cnpg_postgres_version }}
+  imageName: ghcr.io/cloudnative-pg/postgresql:{{ k8s_tutum_cnpg_postgres_version }}
+{% endif %}
+  imagePullPolicy: {{ k8s_tutum_cnpg_image_pull_policy }}
+
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+{% for key, value in k8s_tutum_cnpg_postgres_parameters.items() %}
+      {{ key }}: "{{ value }}"
+{% endfor %}
+{% if k8s_tutum_cnpg_pg_hba | length > 0 %}
+    pg_hba:
+{% for entry in k8s_tutum_cnpg_pg_hba %}
+      - {{ entry }}
+{% endfor %}
+{% endif %}
+
+  # Bootstrap configuration - create application database
+  bootstrap:
+    initdb:
+      database: {{ k8s_tutum_cnpg_db_name }}
+      owner: {{ k8s_tutum_cnpg_db_user }}
+      secret:
+        name: {{ k8s_tutum_cnpg_cluster_name }}-app-credentials
+
+  # Superuser credentials
+  superuserSecret:
+    name: {{ k8s_tutum_cnpg_cluster_name }}-superuser-credentials
+
+  # Storage configuration
+  storage:
+{% if k8s_tutum_cnpg_storage_class %}
+    storageClass: {{ k8s_tutum_cnpg_storage_class }}
+{% endif %}
+    size: {{ k8s_tutum_cnpg_storage_size }}
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "{{ k8s_tutum_cnpg_resources.requests.cpu }}"
+      memory: "{{ k8s_tutum_cnpg_resources.requests.memory }}"
+    limits:
+      cpu: "{{ k8s_tutum_cnpg_resources.limits.cpu }}"
+      memory: "{{ k8s_tutum_cnpg_resources.limits.memory }}"
+
+{% if k8s_tutum_cnpg_enable_monitoring %}
+  # Monitoring configuration
+  monitoring:
+    enablePodMonitor: true
+{% endif %}
+
+  # Replication settings (for multi-instance clusters)
+{% if k8s_tutum_cnpg_instances > 1 %}
+  primaryUpdateStrategy: unsupervised
+  minSyncReplicas: 0
+  maxSyncReplicas: 0
+{% endif %}
+
+  # Logging
+  enableSuperuserAccess: true
+  logLevel: info

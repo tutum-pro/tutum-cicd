@@ -4,20 +4,20 @@
 # Usage:
 #   ansible-playbook -i inventory uninstall-admin-cli.yml
 #
-# Variables:
-#   cli_container_name: tutum-admin-cli
-#   remove_image: false
+# Variables (from inventory/group_vars/all.yml):
+#   docker_tutum_cli_container_name: tutum-admin-cli
+#   docker_tutum_cli_remove_image: false
 
 - name: Uninstall Tutum Admin CLI Container
   hosts: all
   become: true
   vars:
     # All versions and defaults defined in inventory/group_vars/all.yml
-    _cli_name: "{{ cli_image }}"
-    _cli_version: "{{ cli_version }}"
+    _cli_name: "{{ docker_tutum_cli_image }}"
+    _cli_version: "{{ docker_tutum_cli_version }}"
     _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
-    _cli_container_name: "{{ cli_container_name }}"
-    _remove_image: "{{ remove_image | default(false) }}"
+    _cli_container_name: "{{ docker_tutum_cli_container_name }}"
+    _remove_image: "{{ docker_tutum_cli_remove_image | default(false) }}"
 
   tasks:
     - name: Check if container exists

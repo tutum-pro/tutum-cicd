@@ -1,0 +1,21 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: {{ k8s_tutum_cnpg_cluster_name }}-pooler-rw
+  namespace: {{ k8s_tutum_cnpg_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum
+    app.kubernetes.io/component: database-pooler
+spec:
+  cluster:
+    name: {{ k8s_tutum_cnpg_cluster_name }}
+
+  instances: {{ k8s_tutum_cnpg_pooler_instances }}
+  type: rw
+
+  pgbouncer:
+    poolMode: {{ k8s_tutum_cnpg_pooler_mode }}
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "10"

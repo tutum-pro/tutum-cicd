@@ -15,7 +15,7 @@ Deploy Tutum Engine to Kubernetes cluster.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `k8s_tutum_engine_version` | `4.2.2` | Tutum Engine version |
+| `k8s_tutum_engine_version` | `5.0.8` | Tutum Engine version |
 
 ### Kubernetes Configuration
 
@@ -54,6 +54,21 @@ Deploy Tutum Engine to Kubernetes cluster.
 | `k8s_tutum_engine_resources.limits.cpu` | `500m` | CPU limit |
 | `k8s_tutum_engine_resources.limits.memory` | `512Mi` | Memory limit |
 
+### Ingress Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_engine_ingress_enabled` | `false` | Enable Ingress |
+| `k8s_tutum_engine_ingress_class_name` | `nginx` | Ingress class name |
+| `k8s_tutum_engine_ingress_host` | `""` | Hostname (empty = no host routing) |
+| `k8s_tutum_engine_ingress_path` | `/api` | Path prefix |
+| `k8s_tutum_engine_ingress_path_type` | `Prefix` | Path type |
+| `k8s_tutum_engine_ingress_tls_enabled` | `false` | Enable TLS |
+| `k8s_tutum_engine_ingress_tls_secret_name` | `""` | TLS secret name |
+| `k8s_tutum_engine_ingress_grpc_enabled` | `false` | Enable gRPC Ingress |
+| `k8s_tutum_engine_ingress_grpc_host` | `""` | gRPC hostname |
+| `k8s_tutum_engine_ingress_annotations` | (see defaults) | Ingress annotations |
+
 ### State
 
 | Variable | Default | Description |
@@ -88,6 +103,8 @@ Deploy Tutum Engine to Kubernetes cluster.
 - Deployment: `tutum-engine`
 - Service: `tutum-engine` (ClusterIP)
 - Service: `tutum-engine-headless` (headless)
+- Ingress: `tutum-engine` (optional)
+- Ingress: `tutum-engine-grpc` (optional)
 
 ## License
 

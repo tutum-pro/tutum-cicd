@@ -4,23 +4,23 @@
 # Usage:
 #   ansible-playbook -i inventory install-admin-cli.yml
 #
-# Variables:
-#   cli_image: tutumpro/tutum-admin-cli
-#   cli_version: 0.2.1
-#   cli_container_name: tutum-admin-cli
+# Variables (from inventory/group_vars/all.yml):
+#   docker_tutum_cli_image: tutumpro/tutum-admin-cli
+#   docker_tutum_cli_version: 0.2.1
+#   docker_tutum_cli_container_name: tutum-admin-cli
 
 - name: Install Tutum Admin CLI Container
   hosts: all
   become: true
   vars:
     # CI/CD version for labeling
-    _cicd_version: "{{ cicd_version }}"
+    _cicd_version: "{{ docker_tutum_cicd_version }}"
 
     # All versions and defaults defined in inventory/group_vars/all.yml
-    _cli_name: "{{ cli_image }}"
-    _cli_version: "{{ cli_version }}"
+    _cli_name: "{{ docker_tutum_cli_image }}"
+    _cli_version: "{{ docker_tutum_cli_version }}"
     _cli_full_name: "{{ _cli_name }}:{{ _cli_version }}"
-    _cli_container_name: "{{ cli_container_name }}"
+    _cli_container_name: "{{ docker_tutum_cli_container_name }}"
     _docker_tutum_engine_url: "{{ docker_tutum_engine_url }}"
 
   tasks:

@@ -1,19 +1,30 @@
 ---
 # k8s_tutum_init role defaults
-# Generator for Kubernetes manifests and playbooks
+# Generator for Kubernetes installation playbook and inventory
 
 # Output paths
 k8s_tutum_init_output_path: "."
-k8s_tutum_init_manifests_dir: "k8s-manifests"
+k8s_tutum_init_inventory_path: "inventory"
+k8s_tutum_init_inventory_file: "k8s.ini"
 k8s_tutum_init_playbook_file: "tutum-k8s-install.yml"
+k8s_tutum_init_uninstall_playbook_file: "tutum-k8s-uninstall.yml"
+
+# Generate uninstall playbook
+k8s_tutum_init_generate_uninstall: true
 
 # Overwrite existing files
 k8s_tutum_init_overwrite: false
 
+# Python interpreter for local execution
+k8s_tutum_init_ansible_python_interpreter: "/usr/bin/python3"
+
 # Component versions
 # IMPORTANT: These values MUST be synchronized with the respective role defaults
-k8s_tutum_engine_version: "4.2.2"
-k8s_tutum_csi_version: "3.1.0"
+k8s_tutum_engine_version: "5.0.8"
+k8s_tutum_csi_version: "4.0.0"
+
+# Embedded PostgreSQL version (only for db_mode=embedded)
+k8s_tutum_postgres_version: "15-alpine"
 
 # Namespace
 k8s_tutum_namespace: "tutum-system"
@@ -22,10 +33,18 @@ k8s_tutum_namespace: "tutum-system"
 # Options: "standard", "microk8s", "k3s", "rke2", "openshift"
 k8s_tutum_init_distribution: "standard"
 
-# Database mode: "embedded" or "external"
-# embedded: Deploys PostgreSQL in Kubernetes (tutum_postgres role)
+# Database mode: "embedded", "cnpg" or "external"
+# embedded: Deploys simple PostgreSQL in Kubernetes (tutum_postgres role)
+# cnpg: Deploys CloudNativePG cluster (tutum_cnpg role) - recommended for production
 # external: Uses external PostgreSQL (requires k8s_tutum_init_postgres_host)
 k8s_tutum_init_db_mode: "embedded"
+
+# CNPG configuration (only for db_mode=cnpg)
+k8s_tutum_cnpg_operator_version: "1.25.0"
+k8s_tutum_cnpg_postgres_version: "16"
+k8s_tutum_cnpg_instances: 1
+k8s_tutum_cnpg_storage_size: "5Gi"
+k8s_tutum_cnpg_enable_pooler: false
 
 # PostgreSQL connection (required for external mode)
 k8s_tutum_init_postgres_host: ""
@@ -43,6 +62,15 @@ k8s_tutum_init_master_key: ""
 k8s_tutum_init_jwt_secret: ""
 
 # Generate components
-k8s_tutum_init_generate_postgres: true  # Only used when db_mode=embedded
+k8s_tutum_init_generate_postgres: true  # Only used when db_mode=embedded/cnpg
 k8s_tutum_init_generate_engine: true
 k8s_tutum_init_generate_csi: true
+
+# Ingress configuration
+k8s_tutum_init_ingress_enabled: false
+k8s_tutum_init_ingress_class_name: "nginx"
+k8s_tutum_init_ingress_host: ""
+k8s_tutum_init_ingress_path: "/api"
+k8s_tutum_init_ingress_tls_enabled: false
+k8s_tutum_init_ingress_tls_secret_name: ""
+k8s_tutum_init_ingress_cert_manager_issuer: ""

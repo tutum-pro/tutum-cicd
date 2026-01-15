@@ -5,86 +5,177 @@
 - name: Validate required variables
   ansible.builtin.assert:
     that:
-      - k8s_tutum_postgres_host | length > 0
-      - k8s_tutum_postgres_password | length > 0
+      - k8s_tutum_postgres_host | length > 0 or k8s_tutum_external_db_url | length > 0
+      - k8s_tutum_db_password | length > 0
       - k8s_tutum_master_key | length == 32
     fail_msg: |
       Required variables are missing or invalid:
-      - k8s_tutum_postgres_host must be set (current: '{{ k8s_tutum_postgres_host }}')
-      - k8s_tutum_postgres_password must be set
+      - k8s_tutum_postgres_host or k8s_tutum_external_db_url must be set (current host: '{{ k8s_tutum_postgres_host }}')
+      - k8s_tutum_db_password must be set
       - k8s_tutum_master_key must be exactly 32 characters (current length: {{ k8s_tutum_master_key | length }})
 
 - name: Check kubectl connectivity
   ansible.builtin.command: kubectl cluster-info
   changed_when: false
-  register: _k8s_cluster_info
 
 # ==================== Namespace ====================
-- name: Create namespace
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'namespace.yml.j2') | from_yaml }}"
+- name: Generate namespace manifest
+  ansible.builtin.template:
+    src: namespace.yml.j2
+    dest: /tmp/tutum-engine-namespace.yml
+    mode: '0600'
+
+- name: Apply namespace
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-namespace.yml
+  changed_when: true
 
 # ==================== ConfigMap & Secret ====================
-- name: Create ConfigMap
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'configmap.yml.j2') | from_yaml }}"
+- name: Generate ConfigMap manifest
+  ansible.builtin.template:
+    src: configmap.yml.j2
+    dest: /tmp/tutum-engine-configmap.yml
+    mode: '0600'
 
-- name: Create Secret
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'secret.yml.j2') | from_yaml }}"
+- name: Apply ConfigMap
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-configmap.yml
+  changed_when: true
+
+- name: Generate Secret manifest
+  ansible.builtin.template:
+    src: secret.yml.j2
+    dest: /tmp/tutum-engine-secret.yml
+    mode: '0600'
+
+- name: Apply Secret
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-secret.yml
+  changed_when: true
+
+# ==================== Database Migrations ====================
+- name: Find migration files
+  ansible.builtin.find:
+    paths: "{{ role_path }}/files/migrations"
+    patterns: "*.sql"
+  register: _migration_files_result
+
+- name: Set migration files list
+  ansible.builtin.set_fact:
+    _migration_files: "{{ _migration_files_result.files | map(attribute='path') | sort | list }}"
+
+- name: Generate migrations ConfigMap manifest
+  ansible.builtin.template:
+    src: migrations-configmap.yml.j2
+    dest: /tmp/tutum-engine-migrations-configmap.yml
+    mode: '0600'
+
+- name: Apply migrations ConfigMap
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-migrations-configmap.yml
+  changed_when: true
+
+- name: Generate migration Job manifest
+  ansible.builtin.template:
+    src: migration-job.yml.j2
+    dest: /tmp/tutum-engine-migration-job.yml
+    mode: '0600'
+
+- name: Delete existing migration job if present
+  ansible.builtin.command: >
+    kubectl delete job -l app.kubernetes.io/name=tutum-engine-migrations
+    -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Apply migration Job
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-migration-job.yml
+  changed_when: true
+
+- name: Wait for migrations to complete
+  ansible.builtin.command: >
+    kubectl wait --for=condition=complete job
+    -l app.kubernetes.io/name=tutum-engine-migrations
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
+  register: _migration_result
+
+- name: Display migration result
+  ansible.builtin.debug:
+    msg: "Database migrations completed successfully"
 
 # ==================== RBAC ====================
-- name: Create RBAC resources
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ item }}"
-  loop: "{{ lookup('template', 'rbac.yml.j2') | from_yaml_all | list }}"
-  loop_control:
-    label: "{{ item.kind }}/{{ item.metadata.name }}"
+- name: Generate RBAC manifest
+  ansible.builtin.template:
+    src: rbac.yml.j2
+    dest: /tmp/tutum-engine-rbac.yml
+    mode: '0600'
+
+- name: Apply RBAC resources
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-rbac.yml
+  changed_when: true
 
 # ==================== Deployment ====================
-- name: Deploy tutum-engine
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'deployment.yml.j2') | from_yaml }}"
-  register: _k8s_deployment
+- name: Generate Deployment manifest
+  ansible.builtin.template:
+    src: deployment.yml.j2
+    dest: /tmp/tutum-engine-deployment.yml
+    mode: '0600'
+
+- name: Apply Deployment
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-deployment.yml
+  changed_when: true
 
 # ==================== Services ====================
-- name: Create Services
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ item }}"
-  loop: "{{ lookup('template', 'service.yml.j2') | from_yaml_all | list }}"
-  loop_control:
-    label: "{{ item.kind }}/{{ item.metadata.name }}"
+- name: Generate Services manifest
+  ansible.builtin.template:
+    src: service.yml.j2
+    dest: /tmp/tutum-engine-service.yml
+    mode: '0600'
+
+- name: Apply Services
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-service.yml
+  changed_when: true
+
+# ==================== Ingress (optional) ====================
+- name: Create Ingress
+  when: k8s_tutum_engine_ingress_enabled | bool
+  block:
+    - name: Generate Ingress manifest
+      ansible.builtin.template:
+        src: ingress.yml.j2
+        dest: /tmp/tutum-engine-ingress.yml
+        mode: '0600'
+
+    - name: Apply Ingress
+      ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-ingress.yml
+      changed_when: true
+
+# ==================== Cleanup temp files ====================
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/tutum-engine-namespace.yml
+    - /tmp/tutum-engine-configmap.yml
+    - /tmp/tutum-engine-secret.yml
+    - /tmp/tutum-engine-migrations-configmap.yml
+    - /tmp/tutum-engine-migration-job.yml
+    - /tmp/tutum-engine-rbac.yml
+    - /tmp/tutum-engine-deployment.yml
+    - /tmp/tutum-engine-service.yml
+    - /tmp/tutum-engine-ingress.yml
 
 # ==================== Wait for Deployment ====================
 - name: Wait for tutum-engine deployment to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: tutum-engine
-    namespace: "{{ k8s_tutum_namespace }}"
-  register: _k8s_deployment_status
-  until:
-    - _k8s_deployment_status.resources | length > 0
-    - _k8s_deployment_status.resources[0].status.readyReplicas is defined
-    - _k8s_deployment_status.resources[0].status.readyReplicas == k8s_tutum_engine_replicas
-  retries: 30
-  delay: 10
+  ansible.builtin.command: >
+    kubectl rollout status deployment/tutum-engine
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
 
 # ==================== Verification ====================
-- name: Get tutum-engine pod name
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Pod
-    namespace: "{{ k8s_tutum_namespace }}"
-    label_selectors:
-      - app.kubernetes.io/name=tutum-engine
-  register: _k8s_pods
+- name: Get tutum-engine deployment status
+  ansible.builtin.command: >
+    kubectl get deployment tutum-engine -n {{ k8s_tutum_namespace }}
+    -o jsonpath='{.status.readyReplicas}'
+  register: _deployment_ready
+  changed_when: false
 
 - name: Display installation result
   ansible.builtin.debug:
@@ -93,14 +184,14 @@
       - ""
       - "Namespace: {{ k8s_tutum_namespace }}"
       - "Version: {{ k8s_tutum_engine_version }}"
-      - "Replicas: {{ k8s_tutum_engine_replicas }}"
+      - "Replicas: {{ _deployment_ready.stdout | default('0') }}/{{ k8s_tutum_engine_replicas }}"
       - ""
       - "Services:"
       - "  - REST API: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_http_port }}"
       - "  - gRPC API: tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_grpc_port }}"
       - "  - Metrics: http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:{{ k8s_tutum_engine_metrics_port }}/metrics"
       - ""
-      - "Database: {{ k8s_tutum_postgres_host }}:{{ k8s_tutum_postgres_port }}/{{ k8s_tutum_postgres_db }}"
+      - "Database: {{ k8s_tutum_postgres_host }}:{{ k8s_tutum_postgres_port }}/{{ k8s_tutum_db_name }}"
       - ""
       - "IMPORTANT - Save these secrets:"
       - "  - TUTUM_MASTER_KEY: {{ k8s_tutum_master_key }}"

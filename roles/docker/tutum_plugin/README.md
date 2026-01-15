@@ -12,7 +12,7 @@ Installs Tutum Docker Volume Plugin for certificate management.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `docker_tutum_plugin_version` | `2.1.6` | Plugin version |
+| `docker_tutum_plugin_version` | `3.0.0` | Plugin version |
 | `docker_tutum_engine_url` | `localhost:9090` | Tutum Engine gRPC URL |
 | `docker_tutum_volume_dir` | `/var/lib/tutum/volumes` | Volume mount directory |
 | `docker_tutum_log_level` | `info` | Log level |

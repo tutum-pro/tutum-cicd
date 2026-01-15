@@ -1,0 +1,96 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tutum-engine-migrations-{{ ansible_date_time.epoch }}
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine-migrations
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: tutum
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tutum-engine-migrations
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrations
+          image: postgres:{{ k8s_tutum_postgres_version | default('15-alpine') }}
+          env:
+            - name: PGHOST
+              value: "{{ k8s_tutum_postgres_host }}"
+            - name: PGPORT
+              value: "{{ k8s_tutum_postgres_port }}"
+            - name: PGDATABASE
+              value: "{{ k8s_tutum_db_name }}"
+            - name: PGUSER
+              value: "{{ k8s_tutum_db_user }}"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tutum-engine-secret
+                  key: POSTGRES_PASSWORD
+            - name: PGSSLMODE
+              value: "{{ k8s_tutum_postgres_sslmode | default('disable') }}"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Tutum Engine Database Migrations ==="
+              echo "Host: $PGHOST:$PGPORT"
+              echo "Database: $PGDATABASE"
+
+              # Wait for PostgreSQL to be ready
+              echo "Waiting for PostgreSQL..."
+              until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+                echo "PostgreSQL not ready, waiting..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+
+              # Create migrations tracking table
+              echo "Creating migrations tracking table..."
+              psql -c "CREATE TABLE IF NOT EXISTS schema_migrations (
+                id SERIAL PRIMARY KEY,
+                version VARCHAR(255) NOT NULL UNIQUE,
+                description TEXT,
+                applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+              );"
+
+              # Apply schema.sql if not applied
+              if ! psql -tAc "SELECT 1 FROM schema_migrations WHERE version = 'schema'" | grep -q 1; then
+                echo "Applying initial schema..."
+                psql -f /migrations/schema.sql
+                psql -c "INSERT INTO schema_migrations (version, description) VALUES ('schema', 'Initial schema');"
+                echo "Initial schema applied."
+              else
+                echo "Initial schema already applied."
+              fi
+
+              # Apply migrations in order
+              for migration in $(ls /migrations/*.sql | grep -E '^/migrations/[0-9]+' | sort); do
+                version=$(basename "$migration" .sql)
+                if ! psql -tAc "SELECT 1 FROM schema_migrations WHERE version = '$version'" | grep -q 1; then
+                  echo "Applying migration: $version"
+                  psql -f "$migration"
+                  psql -c "INSERT INTO schema_migrations (version, description) VALUES ('$version', 'Migration $version');"
+                  echo "Migration $version applied."
+                else
+                  echo "Migration $version already applied, skipping."
+                fi
+              done
+
+              echo "=== Migrations completed successfully ==="
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: tutum-engine-migrations

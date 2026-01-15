@@ -9,11 +9,11 @@
   become: true
   vars:
     # All versions and defaults defined in inventory/group_vars/all.yml
-    _plugin_name: "{{ plugin_image }}"
-    _plugin_version: "{{ plugin_version }}"
+    _plugin_name: "{{ docker_tutum_plugin_image }}"
+    _plugin_version: "{{ docker_tutum_plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
-    _remove_volumes: "{{ remove_volumes | default(false) }}"
-    _volume_dir: "{{ volume_dir }}"
+    _remove_volumes: "{{ docker_tutum_plugin_remove_volumes | default(false) }}"
+    _volume_dir: "{{ docker_tutum_volume_dir }}"
 
   tasks:
     - name: Check if plugin is installed

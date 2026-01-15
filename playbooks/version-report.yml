@@ -13,13 +13,13 @@
   become: true
   gather_facts: true
   vars:
-    # Expected versions from group_vars/all.yml
-    _expected_cicd_version: "{{ cicd_version }}"
+    # Expected versions from group_vars/all.yml (using docker_tutum_* convention)
+    _expected_cicd_version: "{{ docker_tutum_cicd_version }}"
     _expected_engine_version: "{{ docker_tutum_engine_version }}"
-    _expected_cli_version: "{{ cli_version }}"
-    _expected_plugin_version: "{{ plugin_version }}"
-    _expected_postgres_version: "{{ postgres_version }}"
-    _plugin_full_name: "{{ plugin_image }}:{{ plugin_version }}"
+    _expected_cli_version: "{{ docker_tutum_cli_version }}"
+    _expected_plugin_version: "{{ docker_tutum_plugin_version }}"
+    _expected_postgres_version: "{{ docker_tutum_postgres_version }}"
+    _plugin_full_name: "{{ docker_tutum_plugin_image }}:{{ docker_tutum_plugin_version }}"
 
   tasks:
     # ==================== Collect Container Information ====================
@@ -128,8 +128,8 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          if docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' 2>/dev/null | grep -q "{{ plugin_image }}"; then
-            ENABLED=$(docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Enabled{{ '}}' }}' | grep "{{ plugin_image }}" | cut -d: -f3)
+          if docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}' 2>/dev/null | grep -q "{{ docker_tutum_plugin_image }}"; then
+            ENABLED=$(docker plugin ls --format '{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Enabled{{ '}}' }}' | grep "{{ docker_tutum_plugin_image }}" | cut -d: -f3)
             if [ "$ENABLED" = "true" ]; then
               echo "enabled"
             else

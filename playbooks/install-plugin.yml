@@ -4,28 +4,28 @@
 # Usage:
 #   ansible-playbook -i inventory install-plugin.yml
 #
-# Variables:
-#   plugin_image: tutumpro/tutum-csi-driver-docker
-#   plugin_version: 2.1.5
+# Variables (from inventory/group_vars/all.yml):
+#   docker_tutum_plugin_image: tutumpro/tutum-csi-driver-docker
+#   docker_tutum_plugin_version: 2.1.6
 #   docker_tutum_engine_url: localhost:9090
-#   volume_dir: /var/lib/tutum/volumes
-#   log_level: info
+#   docker_tutum_volume_dir: /var/lib/tutum/volumes
+#   docker_tutum_log_level: info
 
 - name: Install Tutum Docker Volume Plugin
   hosts: all
   become: true
   vars:
     # CI/CD version for labeling
-    _cicd_version: "{{ cicd_version }}"
+    _cicd_version: "{{ docker_tutum_cicd_version }}"
 
     # All versions and defaults defined in inventory/group_vars/all.yml
-    _plugin_name: "{{ plugin_image }}"
-    _plugin_version: "{{ plugin_version }}"
+    _plugin_name: "{{ docker_tutum_plugin_image }}"
+    _plugin_version: "{{ docker_tutum_plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
-    # Plugin runs inside Docker network, needs internal URL
-    _docker_tutum_engine_url: "{{ tutum_engine_internal_url }}"
-    _volume_dir: "{{ volume_dir }}"
-    _log_level: "{{ log_level }}"
+    # Plugin runs with --network host, uses localhost
+    _docker_tutum_engine_url: "{{ docker_tutum_engine_url }}"
+    _volume_dir: "{{ docker_tutum_volume_dir }}"
+    _log_level: "{{ docker_tutum_log_level }}"
     _plugin_temp_dir: "/tmp/tutum-plugin-{{ ansible_facts['date_time']['epoch'] }}"
 
   tasks:

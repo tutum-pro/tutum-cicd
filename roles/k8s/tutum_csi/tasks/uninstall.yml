@@ -2,65 +2,41 @@
 # k8s_tutum_csi - Uninstall tasks
 
 - name: Delete StorageClass
-  kubernetes.core.k8s:
-    state: absent
-    api_version: storage.k8s.io/v1
-    kind: StorageClass
-    name: "{{ k8s_tutum_csi_storage_class_name }}"
+  ansible.builtin.command: kubectl delete storageclass {{ k8s_tutum_csi_storage_class_name }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete CSI Node DaemonSet
-  kubernetes.core.k8s:
-    state: absent
-    api_version: apps/v1
-    kind: DaemonSet
-    name: tutum-csi-node
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete daemonset tutum-csi-node -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete CSI Controller Deployment
-  kubernetes.core.k8s:
-    state: absent
-    api_version: apps/v1
-    kind: Deployment
-    name: tutum-csi-controller
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete deployment tutum-csi-controller -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete CSIDriver
-  kubernetes.core.k8s:
-    state: absent
-    api_version: storage.k8s.io/v1
-    kind: CSIDriver
-    name: "{{ k8s_tutum_csi_driver_name }}"
+  ansible.builtin.command: kubectl delete csidriver {{ k8s_tutum_csi_driver_name }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete ServiceAccounts
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: ServiceAccount
-    name: "{{ item }}"
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete serviceaccount {{ item }} -n {{ k8s_tutum_namespace }} --ignore-not-found=true
   loop:
     - tutum-csi-controller
     - tutum-csi-node
+  changed_when: true
 
 - name: Delete ClusterRoles
-  kubernetes.core.k8s:
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    name: "{{ item }}"
+  ansible.builtin.command: kubectl delete clusterrole {{ item }} --ignore-not-found=true
   loop:
     - tutum-csi-controller-role
     - tutum-csi-node-role
+  changed_when: true
 
 - name: Delete ClusterRoleBindings
-  kubernetes.core.k8s:
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    name: "{{ item }}"
+  ansible.builtin.command: kubectl delete clusterrolebinding {{ item }} --ignore-not-found=true
   loop:
     - tutum-csi-controller-binding
     - tutum-csi-node-binding
+  changed_when: true
 
 - name: Display uninstall result
   ansible.builtin.debug:

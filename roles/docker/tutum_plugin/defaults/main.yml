@@ -2,7 +2,7 @@
 # Docker Plugin Role Defaults
 
 # Plugin version
-docker_tutum_plugin_version: "2.1.6"
+docker_tutum_plugin_version: "3.0.0"
 docker_tutum_plugin_image: "tutumpro/tutum-csi-driver-docker"
 
 # CI/CD version for labeling

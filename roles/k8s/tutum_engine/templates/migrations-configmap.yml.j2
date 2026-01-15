@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tutum-engine-migrations
+  namespace: {{ k8s_tutum_namespace }}
+  labels:
+    app.kubernetes.io/name: tutum-engine
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: tutum
+data:
+{% for file in _migration_files %}
+  {{ file | basename }}: |
+{{ lookup('file', file) | indent(4, first=True) }}
+{% endfor %}

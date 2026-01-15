@@ -1,0 +1,81 @@
+---
+# k8s_tutum_cnpg - Uninstall tasks
+
+# ==================== Remove Pooler ====================
+
+- name: Delete PgBouncer Pooler
+  ansible.builtin.command: >
+    kubectl delete pooler {{ k8s_tutum_cnpg_cluster_name }}-pooler-rw
+    -n {{ k8s_tutum_cnpg_namespace }} --ignore-not-found=true
+  changed_when: true
+
+# ==================== Remove Cluster ====================
+
+- name: Delete PostgreSQL cluster
+  ansible.builtin.command: >
+    kubectl delete cluster {{ k8s_tutum_cnpg_cluster_name }}
+    -n {{ k8s_tutum_cnpg_namespace }} --ignore-not-found=true
+  changed_when: true
+  register: _cnpg_cluster_delete
+
+- name: Wait for cluster deletion
+  ansible.builtin.command: >
+    kubectl wait --for=delete cluster/{{ k8s_tutum_cnpg_cluster_name }}
+    -n {{ k8s_tutum_cnpg_namespace }} --timeout=300s
+  changed_when: false
+  failed_when: false
+  when: _cnpg_cluster_delete.rc == 0
+
+# ==================== Remove Secrets ====================
+
+- name: Delete cluster secrets
+  ansible.builtin.command: >
+    kubectl delete secret {{ item }}
+    -n {{ k8s_tutum_cnpg_namespace }} --ignore-not-found=true
+  loop:
+    - "{{ k8s_tutum_cnpg_cluster_name }}-app-credentials"
+    - "{{ k8s_tutum_cnpg_cluster_name }}-superuser-credentials"
+  changed_when: true
+
+# ==================== Remove PVCs (optional) ====================
+
+- name: Remove cluster PVCs
+  when: k8s_tutum_cnpg_remove_data | bool
+  block:
+    - name: Delete cluster PVCs
+      ansible.builtin.command: >
+        kubectl delete pvc -l cnpg.io/cluster={{ k8s_tutum_cnpg_cluster_name }}
+        -n {{ k8s_tutum_cnpg_namespace }} --ignore-not-found=true
+      changed_when: true
+
+# ==================== Remove Operator (optional) ====================
+
+- name: Remove CNPG Operator
+  when: k8s_tutum_cnpg_remove_operator | bool
+  block:
+    - name: Uninstall CNPG operator
+      ansible.builtin.command: >
+        kubectl delete -f
+        https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-{{ k8s_tutum_cnpg_operator_version | regex_replace('^(\d+\.\d+).*', '\1') }}/releases/cnpg-{{ k8s_tutum_cnpg_operator_version }}.yaml
+        --ignore-not-found=true
+      register: _cnpg_operator_uninstall
+      changed_when: "'deleted' in _cnpg_operator_uninstall.stdout"
+      failed_when: false
+
+    - name: Delete operator namespace
+      ansible.builtin.command: >
+        kubectl delete namespace {{ k8s_tutum_cnpg_operator_namespace }} --ignore-not-found=true
+      changed_when: true
+
+- name: Delete cluster namespace (if empty and remove_data is true)
+  ansible.builtin.command: >
+    kubectl delete namespace {{ k8s_tutum_cnpg_namespace }} --ignore-not-found=true
+  changed_when: true
+  when: k8s_tutum_cnpg_remove_data | bool
+
+- name: Display uninstall result
+  ansible.builtin.debug:
+    msg:
+      - "CloudNativePG cluster '{{ k8s_tutum_cnpg_cluster_name }}' removed from namespace '{{ k8s_tutum_cnpg_namespace }}'"
+      - "Data removed: {{ k8s_tutum_cnpg_remove_data }}"
+      - "Operator removed: {{ k8s_tutum_cnpg_remove_operator }}"

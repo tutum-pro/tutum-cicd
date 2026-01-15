@@ -1,0 +1,202 @@
+---
+# k8s_tutum_cnpg - Installation tasks
+
+# ==================== CNPG Operator ====================
+
+- name: Install CNPG Operator
+  when: k8s_tutum_cnpg_install_operator | bool
+  block:
+    - name: Generate operator namespace manifest
+      ansible.builtin.template:
+        src: operator-namespace.yml.j2
+        dest: /tmp/cnpg-operator-namespace.yml
+        mode: '0600'
+
+    - name: Apply operator namespace
+      ansible.builtin.command: kubectl apply -f /tmp/cnpg-operator-namespace.yml
+      changed_when: true
+
+    - name: Install CNPG operator via kubectl
+      ansible.builtin.command: >
+        kubectl apply --server-side -f
+        https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-{{ k8s_tutum_cnpg_operator_version | regex_replace('^(\d+\.\d+).*', '\1') }}/releases/cnpg-{{ k8s_tutum_cnpg_operator_version }}.yaml
+      register: _cnpg_operator_install
+      changed_when: "'configured' in _cnpg_operator_install.stdout or 'created' in _cnpg_operator_install.stdout"
+
+    - name: Wait for CNPG operator to be ready
+      ansible.builtin.command: >
+        kubectl rollout status deployment/cnpg-controller-manager
+        -n {{ k8s_tutum_cnpg_operator_namespace }} --timeout=300s
+      changed_when: false
+
+    - name: Display operator installation result
+      ansible.builtin.debug:
+        msg: "CNPG Operator {{ k8s_tutum_cnpg_operator_version }} installed successfully"
+
+# ==================== PostgreSQL Cluster ====================
+
+- name: Generate cluster namespace manifest
+  ansible.builtin.template:
+    src: cluster-namespace.yml.j2
+    dest: /tmp/cnpg-cluster-namespace.yml
+    mode: '0600'
+
+- name: Apply cluster namespace
+  ansible.builtin.command: kubectl apply -f /tmp/cnpg-cluster-namespace.yml
+  changed_when: true
+
+# Check if secrets already exist (to preserve passwords across runs)
+- name: Check if app credentials secret exists
+  ansible.builtin.command: >
+    kubectl get secret {{ k8s_tutum_cnpg_cluster_name }}-app-credentials
+    -n {{ k8s_tutum_cnpg_namespace }} -o jsonpath='{.data.password}'
+  register: _existing_app_password
+  failed_when: false
+  changed_when: false
+
+- name: Check if superuser credentials secret exists
+  ansible.builtin.command: >
+    kubectl get secret {{ k8s_tutum_cnpg_cluster_name }}-superuser-credentials
+    -n {{ k8s_tutum_cnpg_namespace }} -o jsonpath='{.data.password}'
+  register: _existing_superuser_password
+  failed_when: false
+  changed_when: false
+
+# Generate or retrieve passwords
+- name: Set app password (use existing or generate new)
+  ansible.builtin.set_fact:
+    _cnpg_app_password: >-
+      {{ _existing_app_password.stdout | b64decode
+         if _existing_app_password.rc == 0 and _existing_app_password.stdout | length > 0
+         else (k8s_tutum_cnpg_db_password if k8s_tutum_cnpg_db_password | default('') | length > 0
+               else lookup('password', '/dev/null chars=ascii_letters,digits length=24')) }}
+
+- name: Set superuser password (use existing or generate new)
+  ansible.builtin.set_fact:
+    _cnpg_superuser_password: >-
+      {{ _existing_superuser_password.stdout | b64decode
+         if _existing_superuser_password.rc == 0 and _existing_superuser_password.stdout | length > 0
+         else (k8s_tutum_cnpg_superuser_password if k8s_tutum_cnpg_superuser_password | default('') | length > 0
+               else lookup('password', '/dev/null chars=ascii_letters,digits length=24')) }}
+
+- name: Generate cluster secrets manifest
+  ansible.builtin.template:
+    src: cluster-secret.yml.j2
+    dest: /tmp/cnpg-cluster-secret.yml
+    mode: '0600'
+
+- name: Apply cluster secrets
+  ansible.builtin.command: kubectl apply -f /tmp/cnpg-cluster-secret.yml
+  changed_when: true
+
+- name: Generate PostgreSQL cluster manifest
+  ansible.builtin.template:
+    src: cluster.yml.j2
+    dest: /tmp/cnpg-cluster.yml
+    mode: '0600'
+
+- name: Apply PostgreSQL cluster
+  ansible.builtin.command: kubectl apply -f /tmp/cnpg-cluster.yml
+  changed_when: true
+
+- name: Wait for PostgreSQL cluster to be ready
+  ansible.builtin.command: >
+    kubectl wait --for=jsonpath='{.status.phase}'='Cluster in healthy state'
+    cluster/{{ k8s_tutum_cnpg_cluster_name }} -n {{ k8s_tutum_cnpg_namespace }} --timeout=600s
+  changed_when: false
+  register: _cnpg_cluster_wait
+
+# ==================== PgBouncer Pooler (optional) ====================
+
+- name: Create PgBouncer Pooler
+  when: k8s_tutum_cnpg_enable_pooler | bool
+  block:
+    - name: Generate pooler manifest
+      ansible.builtin.template:
+        src: pooler.yml.j2
+        dest: /tmp/cnpg-pooler.yml
+        mode: '0600'
+
+    - name: Apply pooler
+      ansible.builtin.command: kubectl apply -f /tmp/cnpg-pooler.yml
+      changed_when: true
+
+# ==================== Cleanup temp files ====================
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/cnpg-operator-namespace.yml
+    - /tmp/cnpg-cluster-namespace.yml
+    - /tmp/cnpg-cluster-secret.yml
+    - /tmp/cnpg-cluster.yml
+    - /tmp/cnpg-pooler.yml
+
+# ==================== Get Connection Info ====================
+
+- name: Get app credentials from secret
+  ansible.builtin.command: >
+    kubectl get secret {{ k8s_tutum_cnpg_cluster_name }}-app-credentials
+    -n {{ k8s_tutum_cnpg_namespace }} -o jsonpath='{.data.username} {.data.password}'
+  register: _cnpg_app_creds
+  changed_when: false
+
+- name: Parse app credentials
+  ansible.builtin.set_fact:
+    _cnpg_app_username: "{{ (_cnpg_app_creds.stdout.split(' ')[0]) | b64decode }}"
+    _cnpg_app_password_decoded: "{{ (_cnpg_app_creds.stdout.split(' ')[1]) | b64decode }}"
+
+- name: Set connection facts for CNPG
+  ansible.builtin.set_fact:
+    k8s_tutum_cnpg_host: "{{ k8s_tutum_cnpg_cluster_name }}-rw.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+    k8s_tutum_cnpg_port: "5432"
+    k8s_tutum_cnpg_connection_user: "{{ _cnpg_app_username }}"
+    k8s_tutum_cnpg_connection_password: "{{ _cnpg_app_password_decoded }}"
+
+# Set variables expected by tutum_engine role
+- name: Set database connection variables for tutum_engine
+  ansible.builtin.set_fact:
+    k8s_tutum_postgres_host: "{{ k8s_tutum_cnpg_cluster_name }}-rw.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+    k8s_tutum_postgres_port: "5432"
+    k8s_tutum_db_name: "{{ k8s_tutum_cnpg_db_name }}"
+    k8s_tutum_db_user: "{{ _cnpg_app_username }}"
+    k8s_tutum_db_password: "{{ _cnpg_app_password_decoded }}"
+
+- name: Display cluster deployment info
+  ansible.builtin.debug:
+    msg:
+      - "=========================================="
+      - "  CloudNativePG Cluster Deployed!"
+      - "=========================================="
+      - ""
+      - "Cluster: {{ k8s_tutum_cnpg_cluster_name }}"
+      - "Namespace: {{ k8s_tutum_cnpg_namespace }}"
+      - "Instances: {{ k8s_tutum_cnpg_instances }}"
+      - "PostgreSQL Version: {{ k8s_tutum_cnpg_postgres_version }}"
+      - ""
+      - "Connection Details:"
+      - "  - Host (RW): {{ k8s_tutum_cnpg_cluster_name }}-rw.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+      - "  - Port: 5432"
+      - "  - Database: {{ k8s_tutum_cnpg_db_name }}"
+      - "  - User: {{ k8s_tutum_cnpg_db_user }}"
+      - ""
+      - "Secrets:"
+      - "  - App credentials: {{ k8s_tutum_cnpg_cluster_name }}-app-credentials"
+      - "  - Superuser credentials: {{ k8s_tutum_cnpg_cluster_name }}-superuser-credentials"
+
+- name: Display HA info
+  ansible.builtin.debug:
+    msg:
+      - "HA Services ({{ k8s_tutum_cnpg_instances }} instances):"
+      - "  - Host (RO): {{ k8s_tutum_cnpg_cluster_name }}-ro.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+      - "  - Host (R):  {{ k8s_tutum_cnpg_cluster_name }}-r.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+  when: k8s_tutum_cnpg_instances | int > 1
+
+- name: Display pooler info
+  ansible.builtin.debug:
+    msg:
+      - "PgBouncer Pooler:"
+      - "  - Host: {{ k8s_tutum_cnpg_cluster_name }}-pooler-rw.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local"
+      - "  - Port: 5432"
+  when: k8s_tutum_cnpg_enable_pooler | bool

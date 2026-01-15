@@ -1,62 +1,47 @@
 ---
 # k8s_tutum_engine - Uninstall tasks
 
+- name: Delete Ingress resources
+  ansible.builtin.command: kubectl delete ingress tutum-engine tutum-engine-grpc -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
+
 - name: Delete tutum-engine Deployment
-  kubernetes.core.k8s:
-    state: absent
-    api_version: apps/v1
-    kind: Deployment
-    name: tutum-engine
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete deployment tutum-engine -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete tutum-engine Services
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: Service
-    name: "{{ item }}"
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete service {{ item }} -n {{ k8s_tutum_namespace }} --ignore-not-found=true
   loop:
     - tutum-engine
     - tutum-engine-headless
+  changed_when: true
 
-- name: Delete tutum-engine ConfigMap
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: ConfigMap
-    name: tutum-engine-config
-    namespace: "{{ k8s_tutum_namespace }}"
+- name: Delete tutum-engine ConfigMaps
+  ansible.builtin.command: kubectl delete configmap {{ item }} -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  loop:
+    - tutum-engine-config
+    - tutum-engine-migrations
+  changed_when: true
 
 - name: Delete tutum-engine Secret
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: Secret
-    name: tutum-engine-secret
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete secret tutum-engine-secret -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete tutum-engine ServiceAccount
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: ServiceAccount
-    name: tutum-engine
-    namespace: "{{ k8s_tutum_namespace }}"
+  ansible.builtin.command: kubectl delete serviceaccount tutum-engine -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Delete migration Jobs
+  ansible.builtin.command: kubectl delete job -l app.kubernetes.io/name=tutum-engine-migrations -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
 
 - name: Delete ClusterRole
-  kubernetes.core.k8s:
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    name: tutum-engine-pod-restarter
+  ansible.builtin.command: kubectl delete clusterrole tutum-engine-pod-restarter --ignore-not-found=true
+  changed_when: true
 
 - name: Delete ClusterRoleBinding
-  kubernetes.core.k8s:
-    state: absent
-    api_version: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    name: tutum-engine-pod-restarter
+  ansible.builtin.command: kubectl delete clusterrolebinding tutum-engine-pod-restarter --ignore-not-found=true
+  changed_when: true
 
 - name: Display uninstall result
   ansible.builtin.debug:

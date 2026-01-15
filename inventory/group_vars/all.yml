@@ -6,6 +6,10 @@
 # This file contains all version definitions in one place.
 # All playbooks reference these variables - DO NOT hardcode versions elsewhere.
 #
+# Variable naming convention:
+#   - docker_tutum_* for Docker platform variables
+#   - k8s_tutum_* for Kubernetes platform variables
+#
 # To upgrade a component:
 #   1. Update the version here
 #   2. Run: make bump TYPE=f (or c/b depending on change)
@@ -17,83 +21,95 @@
 # CI/CD Version (for labeling deployed resources)
 # -----------------------------------------------------------------------------
 
-cicd_version: "{{ lookup('file', playbook_dir + '/../version', errors='ignore') | default('0.0.0') }}"
+docker_tutum_cicd_version: "{{ lookup('file', playbook_dir + '/../version', errors='ignore') | default('0.0.0') }}"
 
 # -----------------------------------------------------------------------------
 # Component Versions
 # -----------------------------------------------------------------------------
 
 # Tutum Engine
-docker_tutum_engine_version: "4.2.3"
+docker_tutum_engine_version: "5.0.8"
 
 # Tutum Admin CLI
-cli_version: "0.2.1"
+docker_tutum_cli_version: "0.2.1"
 
 # Tutum Docker Volume Plugin (CSI Driver)
-plugin_version: "2.1.6"
+# NOTE: This is a default value. Override in inventory file or host_vars for specific environments
+# docker_tutum_plugin_version: "2.1.6"  # Commented out - set in inventory or role defaults
 
 # PostgreSQL
-postgres_version: "15-alpine"
+docker_tutum_postgres_version: "15-alpine"
 
 # -----------------------------------------------------------------------------
 # Image Names (rarely change)
 # -----------------------------------------------------------------------------
 
-tutum_engine_image: "tutumpro/tutum-engine"
-cli_image: "tutumpro/tutum-admin-cli"
-plugin_image: "tutumpro/tutum-csi-driver-docker"
+docker_tutum_engine_image: "tutumpro/tutum-engine"
+docker_tutum_cli_image: "tutumpro/tutum-admin-cli"
+docker_tutum_plugin_image: "tutumpro/tutum-csi-driver-docker"
 
 # -----------------------------------------------------------------------------
-# Default Configuration
+# Network Configuration
 # -----------------------------------------------------------------------------
 
-# Network
-# docker_tutum_engine_url - used for tests and CLI (from host)
-# tutum_engine_internal_url - used by plugin (plugin runs with --network host, so also uses localhost)
+# Engine URL - used for tests and CLI (from host)
 docker_tutum_engine_url: "localhost:9090"
 docker_tutum_rest_port: "8080"
 docker_tutum_grpc_port: "9090"
 
-# Plugin URL (plugin uses --network host, so must use localhost)
-tutum_engine_internal_url: "localhost:9090"
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
 
-# Database
-db_name: "tutum"
-db_user: "tutum"
-db_password: "tutum"
-db_port: "5432"
+docker_tutum_db_name: "tutum"
+docker_tutum_db_user: "tutum"
+docker_tutum_db_password: "tutum"
+docker_tutum_db_port: "5432"
 
-# Security (IMPORTANT: Use fixed keys for test environments to avoid encryption mismatches)
+# -----------------------------------------------------------------------------
+# Security Configuration
+# -----------------------------------------------------------------------------
+
+# IMPORTANT: Use fixed keys for test environments to avoid encryption mismatches
 # These keys MUST be exactly 32 characters for AES-256 encryption
 docker_tutum_master_key: "TutumTestMasterKey32Characters!"
 docker_tutum_jwt_secret: "TutumTestJwtSecret32Characters!!"
 
-# Plugin
-volume_dir: "/var/lib/tutum/volumes"
-log_level: "info"
-
+# -----------------------------------------------------------------------------
 # Directories
+# -----------------------------------------------------------------------------
+
 docker_tutum_data_dir: "/var/lib/tutum"
 docker_tutum_config_dir: "/etc/tutum"
+docker_tutum_volume_dir: "/var/lib/tutum/volumes"
 
-# Docker
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+
+docker_tutum_log_level: "info"
+
+# -----------------------------------------------------------------------------
+# Docker Network
+# -----------------------------------------------------------------------------
+
 docker_tutum_network: "tutum-network"
 
 # -----------------------------------------------------------------------------
 # Container Names
 # -----------------------------------------------------------------------------
 
-cli_container_name: "tutum-admin-cli"
-engine_container_name: "tutum-engine"
-postgres_container_name: "tutum-postgres"
+docker_tutum_cli_container_name: "tutum-admin-cli"
+docker_tutum_engine_container_name: "tutum-engine"
+docker_tutum_postgres_container_name: "tutum-postgres"
 
 # -----------------------------------------------------------------------------
 # Test Configuration
 # -----------------------------------------------------------------------------
 
-test_namespace: "n1"
-test_group: "g1"
-test_cert_name: "test-cert"
-test_container_name: "tutum-test-busybox"
-test_volume_name: "tutum-test-vol"
-cleanup_after_test: true
+docker_tutum_test_namespace: "n1"
+docker_tutum_test_group: "g1"
+docker_tutum_test_cert_name: "test-cert"
+docker_tutum_test_container_name: "tutum-test-busybox"
+docker_tutum_test_volume_name: "tutum-test-vol"
+docker_tutum_test_cleanup: true

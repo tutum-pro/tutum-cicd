@@ -17,25 +17,25 @@
   become: true
   vars:
     # CI/CD version for labeling
-    _cicd_version: "{{ cicd_version }}"
+    _cicd_version: "{{ docker_tutum_cicd_version }}"
 
     # Versions - defined in inventory/group_vars/all.yml
     _docker_tutum_engine_version: "{{ docker_tutum_engine_version }}"
-    _postgres_version: "{{ postgres_version }}"
+    _postgres_version: "{{ docker_tutum_postgres_version }}"
 
     # Database configuration - defined in inventory/group_vars/all.yml
-    _db_name: "{{ db_name }}"
-    _db_user: "{{ db_user }}"
-    _db_password: "{{ db_password }}"
-    _db_host: "{{ postgres_container_name }}"
-    _db_port: "{{ db_port }}"
+    _db_name: "{{ docker_tutum_db_name }}"
+    _db_user: "{{ docker_tutum_db_user }}"
+    _db_password: "{{ docker_tutum_db_password }}"
+    _db_host: "{{ docker_tutum_postgres_container_name }}"
+    _db_port: "{{ docker_tutum_db_port }}"
 
     # Tutum Engine configuration
     _docker_tutum_master_key: "{{ docker_tutum_master_key | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
     _docker_tutum_jwt_secret: "{{ docker_tutum_jwt_secret | default(lookup('password', '/dev/null chars=ascii_letters,digits length=32')) }}"
     _docker_tutum_rest_port: "{{ docker_tutum_rest_port }}"
     _docker_tutum_grpc_port: "{{ docker_tutum_grpc_port }}"
-    _docker_tutum_log_level: "{{ log_level }}"
+    _docker_tutum_log_level: "{{ docker_tutum_log_level }}"
 
     # Directories - defined in inventory/group_vars/all.yml
     _docker_tutum_data_dir: "{{ docker_tutum_data_dir }}"
@@ -271,7 +271,7 @@
         -v /var/run/docker.sock:/var/run/docker.sock:ro
         -p {{ _docker_tutum_rest_port }}:8080
         -p {{ _docker_tutum_grpc_port }}:9090
-        --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"
+        --health-cmd="/app/tutum-engine --health-check http://localhost:8080/health"
         --health-interval=30s
         --health-timeout=3s
         --health-start-period=10s
@@ -331,4 +331,4 @@
           {{ migration_status.stdout }}
 
           Test the installation:
-            curl http://localhost:{{ _docker_tutum_rest_port }}/health
+            docker exec tutum-engine /app/tutum-engine --health-check http://localhost:8080/health

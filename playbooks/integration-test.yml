@@ -23,27 +23,29 @@
   become: true
   vars:
     # All versions and defaults defined in inventory/group_vars/all.yml
-    # docker_tutum_engine_url format: host:grpc_port (e.g., docker:9090)
+    # Variable naming convention: docker_tutum_* for all Docker platform variables
+
+    # Engine URL parsing
     _tutum_engine_host: "{{ docker_tutum_engine_url.split(':')[0] }}"
     _tutum_engine_grpc_port: "{{ docker_tutum_engine_url.split(':')[1] }}"
     _tutum_rest_url: "http://{{ _tutum_engine_host }}:{{ docker_tutum_rest_port }}"
     _tutum_grpc_url: "{{ docker_tutum_engine_url }}"
 
-    # Plugin configuration
-    _plugin_name: "{{ plugin_image }}"
-    _plugin_version: "{{ plugin_version }}"
+    # Plugin configuration (uses docker_tutum_* convention)
+    _plugin_name: "{{ docker_tutum_plugin_image }}"
+    _plugin_version: "{{ docker_tutum_plugin_version }}"
     _plugin_full_name: "{{ _plugin_name }}:{{ _plugin_version }}"
 
-    # Test data
-    _test_namespace: "{{ test_namespace }}"
-    _test_group: "{{ test_group }}"
-    _test_cert_name: "{{ test_cert_name }}"
-    _test_secret_data: "{{ test_secret_data | default('TOP_SECRET') }}"
-    _test_container_name: "{{ test_container_name }}"
-    _test_volume_name: "{{ test_volume_name }}"
+    # Test data (uses docker_tutum_test_* convention)
+    _test_namespace: "{{ docker_tutum_test_namespace }}"
+    _test_group: "{{ docker_tutum_test_group }}"
+    _test_cert_name: "{{ docker_tutum_test_cert_name }}"
+    _test_secret_data: "{{ docker_tutum_test_secret_data | default('TOP_SECRET') }}"
+    _test_container_name: "{{ docker_tutum_test_container_name }}"
+    _test_volume_name: "{{ docker_tutum_test_volume_name }}"
 
     # Cleanup flag
-    _cleanup_after_test: "{{ cleanup_after_test }}"
+    _cleanup_after_test: "{{ docker_tutum_test_cleanup }}"
 
   tasks:
     # ==================== Health Check ====================
@@ -138,11 +140,24 @@
       register: generated_key
 
     # ==================== Create X509 Certificate ====================
+    - name: Check for existing X509 certificate
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates?name={{ _test_cert_name }}&namespace={{ _test_namespace }}"
+        method: GET
+        status_code: [200]
+      register: existing_x509_check
+      failed_when: false
+
     - name: Delete existing X509 certificate (idempotency)
       ansible.builtin.uri:
-        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}"
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ existing_x509_check.json.certificates[0].id }}"
         method: DELETE
         status_code: [200, 204, 404]
+      when: >
+        existing_x509_check.json is defined and
+        existing_x509_check.json.certificates is defined and
+        existing_x509_check.json.certificates is not none and
+        existing_x509_check.json.certificates | length > 0
       failed_when: false
 
     - name: Create X509 certificate
@@ -155,22 +170,44 @@
           group_id: "{{ _test_group_id }}"
           namespace: "{{ _test_namespace }}"
           type: "X509"
-          certificate: "{{ generated_cert.content | b64decode }}"
-          private_key: "{{ generated_key.content | b64decode }}"
+          x509:
+            certificate: "{{ generated_cert.content | b64decode }}"
+            private_key: "{{ generated_key.content | b64decode }}"
           created_by: "integration-test"
         status_code: [200, 201]
       register: x509_result
 
+    - name: Debug X509 result structure
+      ansible.builtin.debug:
+        var: x509_result.json
+
+    - name: Set X509 certificate ID fact
+      ansible.builtin.set_fact:
+        _test_x509_id: "{{ x509_result.json.certificate.id | default(x509_result.json.id) | default('unknown') }}"
+
     - name: Display X509 certificate result
       ansible.builtin.debug:
-        msg: "X509 Certificate '{{ _test_cert_name }}' created in namespace '{{ _test_namespace }}'"
+        msg: "X509 Certificate '{{ _test_cert_name }}' (ID: {{ _test_x509_id }}) created in namespace '{{ _test_namespace }}'"
 
     # ==================== Create Secret ====================
+    - name: Check for existing secret
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates?name={{ _test_cert_name }}-secret&namespace={{ _test_namespace }}"
+        method: GET
+        status_code: [200]
+      register: existing_secret_check
+      failed_when: false
+
     - name: Delete existing secret (idempotency)
       ansible.builtin.uri:
-        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_cert_name }}-secret"
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ existing_secret_check.json.certificates[0].id }}"
         method: DELETE
         status_code: [200, 204, 404]
+      when: >
+        existing_secret_check.json is defined and
+        existing_secret_check.json.certificates is defined and
+        existing_secret_check.json.certificates is not none and
+        existing_secret_check.json.certificates | length > 0
       failed_when: false
 
     - name: Create secret
@@ -189,9 +226,17 @@
         status_code: [200, 201]
       register: secret_result
 
+    - name: Debug secret result structure
+      ansible.builtin.debug:
+        var: secret_result.json
+
+    - name: Set secret ID fact
+      ansible.builtin.set_fact:
+        _test_secret_id: "{{ secret_result.json.certificate.id | default(secret_result.json.id) | default('unknown') }}"
+
     - name: Display secret result
       ansible.builtin.debug:
-        msg: "Secret '{{ _test_cert_name }}-secret' created with data"
+        msg: "Secret '{{ _test_cert_name }}-secret' (ID: {{ _test_secret_id }}) created with data"
 
     # ==================== Create Docker Volume ====================
     - name: Stop existing test container before volume removal
@@ -301,15 +346,21 @@
       failed_when: false
       changed_when: true
 
-    - name: Cleanup - Delete test certificates
+    - name: Cleanup - Delete test X509 certificate
       ansible.builtin.uri:
-        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ item }}?namespace={{ _test_namespace }}&group={{ _test_group_id }}"
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_x509_id }}"
         method: DELETE
         status_code: [200, 204, 404]
-      loop:
-        - "{{ _test_cert_name }}"
-        - "{{ _test_cert_name }}-secret"
-      when: _cleanup_after_test | bool
+      when: _cleanup_after_test | bool and _test_x509_id is defined
+      failed_when: false
+
+    - name: Cleanup - Delete test secret
+      ansible.builtin.uri:
+        url: "{{ _tutum_rest_url }}/api/v1/certificates/{{ _test_secret_id }}"
+        method: DELETE
+        status_code: [200, 204, 404]
+      when: _cleanup_after_test | bool and _test_secret_id is defined
+      failed_when: false
 
     - name: Cleanup - Remove temporary certificate files
       ansible.builtin.file:

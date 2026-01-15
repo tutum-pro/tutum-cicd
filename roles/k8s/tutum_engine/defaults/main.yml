@@ -5,7 +5,7 @@
 # IMPORTANT: These values MUST be synchronized with the respective role defaults:
 #   - k8s_tutum_engine_version -> roles/k8s/tutum_engine/defaults/main.yml (this file)
 #   - k8s_tutum_csi_version    -> roles/k8s/tutum_csi/defaults/main.yml
-k8s_tutum_engine_version: "4.2.2"
+k8s_tutum_engine_version: "5.0.8"
 
 # Namespace
 k8s_tutum_namespace: "tutum-system"
@@ -29,6 +29,22 @@ k8s_tutum_engine_service_type: "ClusterIP"
 k8s_tutum_engine_http_port: 8080
 k8s_tutum_engine_grpc_port: 9090
 k8s_tutum_engine_metrics_port: 9091
+
+# Ingress configuration
+k8s_tutum_engine_ingress_enabled: false
+k8s_tutum_engine_ingress_class_name: "nginx"  # or "public" for microk8s
+k8s_tutum_engine_ingress_host: ""  # e.g., "tutum.example.com" (empty = no host-based routing)
+k8s_tutum_engine_ingress_path: "/api"
+k8s_tutum_engine_ingress_path_type: "Prefix"
+k8s_tutum_engine_ingress_tls_enabled: false
+k8s_tutum_engine_ingress_tls_secret_name: ""  # e.g., "tutum-tls" (empty = use default or cert-manager)
+k8s_tutum_engine_ingress_grpc_enabled: false
+k8s_tutum_engine_ingress_grpc_host: ""  # e.g., "grpc.tutum.example.com"
+k8s_tutum_engine_ingress_annotations:
+  nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  nginx.ingress.kubernetes.io/ssl-redirect: "false"
+# For cert-manager, add:
+#   cert-manager.io/cluster-issuer: "letsencrypt-prod"
 
 # PostgreSQL connection
 # If k8s_tutum_external_db_url is set, external PostgreSQL will be used

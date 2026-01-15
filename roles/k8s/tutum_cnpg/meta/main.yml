@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Tutum Pro
+  description: Deploy CloudNativePG PostgreSQL cluster to Kubernetes
+  license: proprietary
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Kubernetes
+      versions:
+        - all
+
+  galaxy_tags:
+    - kubernetes
+    - postgresql
+    - cloudnativepg
+    - cnpg
+    - database
+
+dependencies: []

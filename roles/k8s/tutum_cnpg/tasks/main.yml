@@ -1,0 +1,10 @@
+---
+# k8s_tutum_cnpg - Main tasks
+
+- name: Include install tasks
+  ansible.builtin.include_tasks: install.yml
+  when: k8s_tutum_cnpg_state == 'present'
+
+- name: Include uninstall tasks
+  ansible.builtin.include_tasks: uninstall.yml
+  when: k8s_tutum_cnpg_state == 'absent'

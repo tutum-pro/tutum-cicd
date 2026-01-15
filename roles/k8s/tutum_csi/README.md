@@ -15,7 +15,7 @@ Deploy Tutum CSI Driver to Kubernetes cluster for certificate volume provisionin
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `k8s_tutum_csi_version` | `3.1.0` | Tutum CSI Driver version |
+| `k8s_tutum_csi_version` | `4.0.0` | Tutum CSI Driver version |
 | `k8s_csi_provisioner_version` | `v3.6.0` | CSI provisioner sidecar version |
 | `k8s_csi_node_driver_registrar_version` | `v2.9.0` | Node driver registrar version |
 

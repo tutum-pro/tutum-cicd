@@ -1,0 +1,10 @@
+---
+# Override variables for docker_hosts group
+# These will override values from all.yml for hosts in [docker_hosts] group
+#
+# NOTE: Variables can be set directly in inventory/docker.ini under [docker_hosts:vars]
+# Those values will take effect since we removed defaults from group_vars/all.yml
+#
+# Example in docker.ini:
+#   [docker_hosts:vars]
+#   docker_tutum_plugin_version=3.0.0

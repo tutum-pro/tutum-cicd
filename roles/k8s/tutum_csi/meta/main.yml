@@ -9,5 +9,6 @@ galaxy_info:
       versions:
         - all
 
-dependencies:
-  - role: kubernetes.core
+dependencies: []
+# Required collection: kubernetes.core
+# Install with: ansible-galaxy collection install kubernetes.core

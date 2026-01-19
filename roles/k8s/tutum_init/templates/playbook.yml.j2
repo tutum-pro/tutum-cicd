@@ -65,8 +65,11 @@
     - role: tutum_pro.cicd.k8s.tutum_engine
 {% endif %}
 
-{% if k8s_tutum_init_generate_csi %}
-    # CSI Driver (certificate volumes)
+{% if k8s_tutum_init_injection_mode == "operator" %}
+    # Tutum Operator (rootless certificate sync via Secrets)
+    - role: tutum_pro.cicd.k8s.tutum_operator
+{% else %}
+    # CSI Driver (certificate volumes - requires privileged)
     - role: tutum_pro.cicd.k8s.tutum_csi
 {% endif %}
 
@@ -98,7 +101,12 @@
           - "  - REST API: http://tutum-engine.{{ '{{' }} k8s_tutum_namespace {{ '}}' }}.svc.cluster.local:8080"
           - "  - gRPC API: tutum-engine.{{ '{{' }} k8s_tutum_namespace {{ '}}' }}.svc.cluster.local:9090"
 {% endif %}
-{% if k8s_tutum_init_generate_csi %}
+{% if k8s_tutum_init_injection_mode == "operator" %}
+          - ""
+          - "Tutum Operator (rootless):"
+          - "  - CRD: TutumCertificate"
+          - "  - Sync interval: {{ '{{' }} k8s_tutum_operator_sync_interval | default('5m') {{ '}}' }}"
+{% else %}
           - ""
           - "CSI Driver:"
           - "  - StorageClass: tutum-csi"

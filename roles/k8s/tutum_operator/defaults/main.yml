@@ -1,0 +1,36 @@
+---
+# k8s_tutum_operator role defaults
+
+# Component versions
+k8s_tutum_operator_version: "0.1.11"
+
+# Namespace
+k8s_tutum_namespace: "tutum-system"
+
+# Images
+k8s_tutum_operator_image: "tutumpro/tutum-operator-k8s"
+
+# Tutum Engine connection
+k8s_tutum_engine_url: "tutum-engine.tutum-system.svc.cluster.local:9090"
+
+# Operator configuration
+k8s_tutum_operator_sync_interval: "5m"
+k8s_tutum_operator_log_level: "info"
+
+# Namespace watching mode:
+# - "" (empty): watch all namespaces (cluster-wide, requires ClusterRole)
+# - "tutum-system": watch only operator's namespace (single namespace mode)
+# - "ns1,ns2,ns3": watch specific namespaces (multi-namespace mode)
+k8s_tutum_operator_watch_namespaces: ""
+
+# Controller resources
+k8s_tutum_operator_resources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# Action: present or absent
+k8s_tutum_operator_state: "present"

@@ -5,7 +5,7 @@
 # IMPORTANT: These values MUST be synchronized with the respective role defaults:
 #   - k8s_tutum_engine_version -> roles/k8s/tutum_engine/defaults/main.yml (this file)
 #   - k8s_tutum_csi_version    -> roles/k8s/tutum_csi/defaults/main.yml
-k8s_tutum_engine_version: "5.0.8"
+k8s_tutum_engine_version: "5.1.5"
 
 # Namespace
 k8s_tutum_namespace: "tutum-system"
@@ -74,6 +74,10 @@ k8s_tutum_log_level: "info"
 k8s_tutum_enable_metrics: "true"
 k8s_tutum_create_not_existing_obj: "true"
 k8s_tutum_pod_restart_enabled: "true"
+
+# Webhook configuration (for tutum-operator-k8s integration)
+k8s_tutum_webhook_enabled: "true"
+k8s_tutum_webhook_endpoints: "http://tutum-operator-webhook.{{ k8s_tutum_namespace }}.svc:8082/webhook/certificate-change"
 
 # Kubernetes distribution for kubelet paths
 # Options: "standard", "microk8s", "k3s", "rke2", "openshift"

@@ -113,6 +113,16 @@ spec:
                 configMapKeyRef:
                   name: tutum-engine-config
                   key: K8S_POD_RESTART_ENABLED
+            - name: WEBHOOK_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: tutum-engine-config
+                  key: WEBHOOK_ENABLED
+            - name: WEBHOOK_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: tutum-engine-config
+                  key: WEBHOOK_ENDPOINTS
           startupProbe:
             httpGet:
               path: /health

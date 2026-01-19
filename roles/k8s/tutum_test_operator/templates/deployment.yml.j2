@@ -1,0 +1,90 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ k8s_tutum_test_app_name }}
+  namespace: {{ k8s_tutum_test_deploy_namespace }}
+  labels:
+    app.kubernetes.io/name: {{ k8s_tutum_test_app_name }}
+    app.kubernetes.io/component: test
+    app.kubernetes.io/managed-by: ansible
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ k8s_tutum_test_app_name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ k8s_tutum_test_app_name }}
+    spec:
+      containers:
+        - name: busybox
+          image: {{ k8s_tutum_test_image }}
+          # Keep container running for testing
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Tutum Operator Test Container ==="
+              echo "Certificate mount path: {{ k8s_tutum_test_cert_mount_path }}"
+              echo ""
+              echo "Waiting for certificates..."
+              while true; do
+                if [ -d "{{ k8s_tutum_test_cert_mount_path }}" ]; then
+                  echo "=== Certificate files ==="
+                  ls -la {{ k8s_tutum_test_cert_mount_path }}
+                  echo ""
+                  echo "=== Certificate content (tls.crt) ==="
+                  if [ -f "{{ k8s_tutum_test_cert_mount_path }}/tls.crt" ]; then
+                    openssl x509 -in {{ k8s_tutum_test_cert_mount_path }}/tls.crt -noout -subject -dates 2>/dev/null || cat {{ k8s_tutum_test_cert_mount_path }}/tls.crt | head -5
+                  fi
+                  echo ""
+                  echo "=== CA certificate (ca.crt) ==="
+                  if [ -f "{{ k8s_tutum_test_cert_mount_path }}/ca.crt" ]; then
+                    openssl x509 -in {{ k8s_tutum_test_cert_mount_path }}/ca.crt -noout -subject -dates 2>/dev/null || cat {{ k8s_tutum_test_cert_mount_path }}/ca.crt | head -5
+                  fi
+                else
+                  echo "Certificate directory not yet available..."
+                fi
+                sleep 30
+              done
+          volumeMounts:
+            - name: certs
+              mountPath: {{ k8s_tutum_test_cert_mount_path }}
+              readOnly: true
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "50m"
+              memory: "64Mi"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: certs
+          secret:
+            secretName: {{ k8s_tutum_test_cert_secret_name }}
+            # Optional: set specific permissions for mounted files
+            defaultMode: 0400
+            # Optional: select specific keys from the secret
+            # items:
+            #   - key: tls.crt
+            #     path: certificate.pem
+            #   - key: tls.key
+            #     path: private-key.pem
+            #   - key: ca.crt
+            #     path: ca-chain.pem
+      securityContext:
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+        kubernetes.io/os: linux

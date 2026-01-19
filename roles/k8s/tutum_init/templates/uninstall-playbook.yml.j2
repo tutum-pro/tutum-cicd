@@ -15,7 +15,11 @@
   vars:
     # Force state to absent for all components
     k8s_tutum_engine_state: "absent"
+{% if k8s_tutum_init_injection_mode == "operator" %}
+    k8s_tutum_operator_state: "absent"
+{% else %}
     k8s_tutum_csi_state: "absent"
+{% endif %}
 {% if k8s_tutum_init_db_mode == "embedded" %}
     k8s_tutum_postgres_state: "absent"
 {% elif k8s_tutum_init_db_mode == "cnpg" %}
@@ -23,7 +27,10 @@
 {% endif %}
 
   roles:
-{% if k8s_tutum_init_generate_csi %}
+{% if k8s_tutum_init_injection_mode == "operator" %}
+    # Remove Operator first (to clean up Secrets)
+    - role: tutum_pro.cicd.k8s.tutum_operator
+{% else %}
     # Remove CSI Driver first (to allow volumes to be cleaned up)
     - role: tutum_pro.cicd.k8s.tutum_csi
 {% endif %}
@@ -58,7 +65,9 @@
           - "=========================================="
           - ""
           - "Removed components:"
-{% if k8s_tutum_init_generate_csi %}
+{% if k8s_tutum_init_injection_mode == "operator" %}
+          - "  - Tutum Operator"
+{% else %}
           - "  - CSI Driver"
 {% endif %}
 {% if k8s_tutum_init_generate_engine %}

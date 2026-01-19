@@ -1,0 +1,63 @@
+---
+# k8s_tutum_operator - Uninstall tasks
+#
+# IMPORTANT: Order matters!
+# 1. First remove finalizers from TutumCertificates (operator may already be stopped)
+# 2. Delete TutumCertificate resources
+# 3. Delete Operator Deployment
+# 4. Delete RBAC resources
+# 5. Delete CRD last
+
+- name: Get all TutumCertificate resources
+  ansible.builtin.command: kubectl get tutumcertificates --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}'
+  register: _tutum_certificates
+  changed_when: false
+  failed_when: false
+
+- name: Remove finalizers from TutumCertificates
+  ansible.builtin.command: >
+    kubectl patch tutumcertificate {{ item.split('/')[1] }}
+    -n {{ item.split('/')[0] }}
+    --type=json
+    -p='[{"op": "remove", "path": "/metadata/finalizers"}]'
+  loop: "{{ _tutum_certificates.stdout_lines | default([]) }}"
+  when:
+    - _tutum_certificates.rc == 0
+    - _tutum_certificates.stdout_lines | length > 0
+    - item | length > 0
+  changed_when: true
+  failed_when: false
+
+- name: Delete all TutumCertificate resources
+  ansible.builtin.command: kubectl delete tutumcertificates --all --all-namespaces --ignore-not-found=true
+  changed_when: true
+  failed_when: false
+
+- name: Delete Operator Deployment
+  ansible.builtin.command: kubectl delete deployment tutum-operator -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Delete ServiceAccount
+  ansible.builtin.command: kubectl delete serviceaccount tutum-operator -n {{ k8s_tutum_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Delete ClusterRole
+  ansible.builtin.command: kubectl delete clusterrole tutum-operator-role --ignore-not-found=true
+  changed_when: true
+
+- name: Delete ClusterRoleBinding
+  ansible.builtin.command: kubectl delete clusterrolebinding tutum-operator-binding --ignore-not-found=true
+  changed_when: true
+
+- name: Delete CRD
+  ansible.builtin.command: kubectl delete crd tutumcertificates.tutum.io --ignore-not-found=true
+  changed_when: true
+
+- name: Display uninstall result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Operator uninstalled from Kubernetes!"
+      - "Namespace {{ k8s_tutum_namespace }} was NOT deleted (may contain other resources)."
+      - ""
+      - "All TutumCertificate resources and CRD have been removed."
+      - "Secrets created by the operator are preserved (orphaned)."

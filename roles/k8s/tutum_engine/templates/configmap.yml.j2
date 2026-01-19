@@ -36,3 +36,6 @@ data:
   CREATE_NOT_EXISTING_OBJ: "{{ k8s_tutum_create_not_existing_obj }}"
   # Kubernetes pod restart
   K8S_POD_RESTART_ENABLED: "{{ k8s_tutum_pod_restart_enabled }}"
+  # Webhook notifications (tutum-operator-k8s integration)
+  WEBHOOK_ENABLED: "{{ k8s_tutum_webhook_enabled }}"
+  WEBHOOK_ENDPOINTS: "{{ k8s_tutum_webhook_endpoints }}"

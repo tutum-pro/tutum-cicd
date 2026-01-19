@@ -1,0 +1,42 @@
+---
+apiVersion: tutum.io/v1
+kind: TutumCertificate
+metadata:
+  name: {{ k8s_tutum_test_cert_name }}
+  namespace: {{ k8s_tutum_test_deploy_namespace }}
+  labels:
+    app.kubernetes.io/name: {{ k8s_tutum_test_app_name }}
+    app.kubernetes.io/component: certificate
+    app.kubernetes.io/managed-by: ansible
+spec:
+  # Certificate identification in Tutum Engine
+  certificateName: {{ k8s_tutum_test_cert_name }}
+{% if k8s_tutum_test_cert_tree_mode %}
+  # When treeMode=true, groupId and namespace must be empty
+  groupId: ""
+  namespace: ""
+{% else %}
+  groupId: {{ k8s_tutum_test_cert_group_id }}
+  namespace: {{ k8s_tutum_test_cert_namespace }}
+{% endif %}
+
+  # Kubernetes Secret to create
+  secretName: {{ k8s_tutum_test_cert_secret_name }}
+
+  # Sync configuration
+  refreshInterval: {{ k8s_tutum_test_cert_refresh_interval }}
+
+  # Secret type: kubernetes.io/tls or Opaque
+  # NOTE: When treeMode=true, must use Opaque
+  secretType: {{ k8s_tutum_test_cert_secret_type }}
+
+  # Include CA certificate in secret
+  includeCa: true
+
+  # Tree mode for certificate files structure
+  treeMode: {{ k8s_tutum_test_cert_tree_mode | lower }}
+
+  # Additional labels for the created Secret
+  secretLabels:
+    app.kubernetes.io/name: {{ k8s_tutum_test_app_name }}
+    tutum.io/certificate: {{ k8s_tutum_test_cert_name }}

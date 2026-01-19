@@ -1,0 +1,118 @@
+---
+# k8s_tutum_test_operator - Installation tasks
+
+# ==================== Validation ====================
+- name: Check kubectl connectivity
+  ansible.builtin.command: kubectl cluster-info
+  changed_when: false
+
+- name: Verify TutumCertificate CRD exists
+  ansible.builtin.command: kubectl get crd tutumcertificates.tutum.io
+  changed_when: false
+  register: _crd_check
+  failed_when: _crd_check.rc != 0
+
+- name: Display configuration
+  ansible.builtin.debug:
+    msg:
+      - "Test application: {{ k8s_tutum_test_app_name }}"
+      - "Deploy namespace: {{ k8s_tutum_test_deploy_namespace }}"
+      - "Certificate name: {{ k8s_tutum_test_cert_name }}"
+      - "Secret name: {{ k8s_tutum_test_cert_secret_name }}"
+      - "Mount path: {{ k8s_tutum_test_cert_mount_path }}"
+
+# ==================== Namespace ====================
+- name: Ensure namespace exists
+  ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_test_deploy_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  changed_when: false
+
+# ==================== TutumCertificate ====================
+- name: Generate TutumCertificate manifest
+  ansible.builtin.template:
+    src: tutumcertificate.yml.j2
+    dest: /tmp/tutum-test-certificate.yml
+    mode: '0600'
+
+- name: Apply TutumCertificate resource
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-test-certificate.yml
+  changed_when: true
+
+# ==================== Test Deployment ====================
+- name: Generate test Deployment manifest
+  ansible.builtin.template:
+    src: deployment.yml.j2
+    dest: /tmp/tutum-test-deployment.yml
+    mode: '0600'
+
+- name: Apply test Deployment
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-test-deployment.yml
+  changed_when: true
+
+# ==================== Cleanup temp files ====================
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/tutum-test-certificate.yml
+    - /tmp/tutum-test-deployment.yml
+
+# ==================== Wait for Secret ====================
+- name: Wait for Secret to be created by operator (max 60s)
+  ansible.builtin.command: >
+    kubectl get secret {{ k8s_tutum_test_cert_secret_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }}
+  register: _secret_check
+  until: _secret_check.rc == 0
+  retries: 12
+  delay: 5
+  changed_when: false
+  ignore_errors: true
+
+- name: Display Secret status
+  ansible.builtin.debug:
+    msg: "{{ 'Secret created successfully' if _secret_check.rc == 0 else 'WARNING: Secret not yet created - operator may still be syncing' }}"
+
+# ==================== Wait for Deployment ====================
+- name: Wait for test Deployment to be ready
+  ansible.builtin.command: >
+    kubectl rollout status deployment/{{ k8s_tutum_test_app_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }} --timeout=120s
+  changed_when: false
+  ignore_errors: true
+  register: _deployment_status
+
+# ==================== Verification ====================
+- name: Get TutumCertificate status
+  ansible.builtin.command: >
+    kubectl get tutumcertificate {{ k8s_tutum_test_cert_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }} -o wide
+  register: _cert_status
+  changed_when: false
+  ignore_errors: true
+
+- name: Get pod status
+  ansible.builtin.command: >
+    kubectl get pods -l app.kubernetes.io/name={{ k8s_tutum_test_app_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }}
+  register: _pod_status
+  changed_when: false
+
+- name: Display installation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Operator Test deployed!"
+      - ""
+      - "Namespace: {{ k8s_tutum_test_deploy_namespace }}"
+      - ""
+      - "TutumCertificate:"
+      - "  - Name: {{ k8s_tutum_test_cert_name }}"
+      - "  - Secret: {{ k8s_tutum_test_cert_secret_name }}"
+      - "  - Status: {{ _cert_status.stdout | default('pending') }}"
+      - ""
+      - "Test Pod:"
+      - "{{ _pod_status.stdout | default('No pods found') }}"
+      - ""
+      - "To verify certificates in the pod:"
+      - "  kubectl exec -it deploy/{{ k8s_tutum_test_app_name }} -n {{ k8s_tutum_test_deploy_namespace }} -- ls -la {{ k8s_tutum_test_cert_mount_path }}"
+      - "  kubectl exec -it deploy/{{ k8s_tutum_test_app_name }} -n {{ k8s_tutum_test_deploy_namespace }} -- cat {{ k8s_tutum_test_cert_mount_path }}/tls.crt"

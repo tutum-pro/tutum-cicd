@@ -16,11 +16,13 @@ k8s_tutum_init_generate_uninstall: true
 k8s_tutum_init_overwrite: false
 
 # Python interpreter for local execution
-k8s_tutum_init_ansible_python_interpreter: "/usr/bin/python3"
+# Set to "auto" to autodiscover the current Python interpreter
+# or provide explicit path like "/usr/bin/python3"
+k8s_tutum_init_ansible_python_interpreter: "auto"
 
 # Component versions
 # IMPORTANT: These values MUST be synchronized with the respective role defaults
-k8s_tutum_engine_version: "5.0.8"
+k8s_tutum_engine_version: "5.1.5"
 k8s_tutum_csi_version: "4.0.0"
 
 # Embedded PostgreSQL version (only for db_mode=embedded)
@@ -64,7 +66,23 @@ k8s_tutum_init_jwt_secret: ""
 # Generate components
 k8s_tutum_init_generate_postgres: true  # Only used when db_mode=embedded/cnpg
 k8s_tutum_init_generate_engine: true
-k8s_tutum_init_generate_csi: true
+
+# Certificate injection mode: "csi" or "operator"
+# csi: Uses CSI driver (requires privileged containers, real-time mounts)
+# operator: Uses Kubernetes operator (rootless, syncs certificates to Secrets)
+k8s_tutum_init_injection_mode: "csi"
+
+# Operator configuration (only for injection_mode=operator)
+k8s_tutum_operator_version: "0.1.11"
+k8s_tutum_operator_sync_interval: "5m"
+# Namespace watching mode:
+# - "" (empty): watch all namespaces (cluster-wide)
+# - "ns1,ns2": watch only specific namespaces
+k8s_tutum_operator_watch_namespaces: ""
+
+# Test operator deployment namespace
+# K8s namespace where tutum_test_operator will deploy test app and TutumCertificate CR
+k8s_tutum_test_deploy_namespace: "tutum-system"
 
 # Ingress configuration
 k8s_tutum_init_ingress_enabled: false

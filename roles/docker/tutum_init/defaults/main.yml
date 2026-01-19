@@ -14,7 +14,8 @@ docker_tutum_init_playbook_file: "tutum-install.yml"
 docker_tutum_init_target_host: "localhost"
 docker_tutum_init_target_hostname: ""  # Optional: inventory hostname (default: same as target_host)
 docker_tutum_init_ansible_connection: "local"
-docker_tutum_init_ansible_python_interpreter: "/usr/bin/python3"
+# Python interpreter - set to "auto" for autodiscovery or explicit path
+docker_tutum_init_ansible_python_interpreter: "auto"
 
 # SSH configuration (for remote hosts with ansible_connection=ssh)
 docker_tutum_init_ansible_user: ""
@@ -28,7 +29,7 @@ docker_tutum_init_ansible_become_password: ""  # Sudo password (use ansible-vaul
 #   - docker_tutum_plugin_version  -> roles/docker/tutum_plugin/defaults/main.yml
 #   - docker_tutum_cli_version     -> roles/docker/tutum_cli/defaults/main.yml
 #   - docker_tutum_postgres_version -> roles/docker/tutum_postgres/defaults/main.yml
-docker_tutum_engine_version: "5.0.8"
+docker_tutum_engine_version: "5.1.5"
 docker_tutum_plugin_version: "3.0.0"
 docker_tutum_cli_version: "0.2.1"
 docker_tutum_postgres_version: "15-alpine"

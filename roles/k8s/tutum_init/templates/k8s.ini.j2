@@ -30,7 +30,6 @@ k8s_distribution={{ k8s_tutum_init_distribution }}
 # =============================================================================
 
 k8s_tutum_engine_version={{ k8s_tutum_engine_version }}
-k8s_tutum_csi_version={{ k8s_tutum_csi_version }}
 {% if k8s_tutum_init_db_mode == "embedded" %}
 k8s_tutum_postgres_version={{ k8s_tutum_postgres_version | default('15-alpine') }}
 {% endif %}
@@ -99,10 +98,38 @@ k8s_tutum_jwt_secret={{ k8s_tutum_init_jwt_secret }}
 {% endif %}
 
 # =============================================================================
+# Certificate Injection Mode
+# =============================================================================
+# Options: csi, operator
+# csi: Uses CSI driver (requires privileged containers, real-time mounts)
+# operator: Uses Kubernetes operator (rootless, syncs certificates to Secrets)
+
+k8s_tutum_init_injection_mode={{ k8s_tutum_init_injection_mode }}
+
+k8s_tutum_engine_url=tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:9090
+
+{% if k8s_tutum_init_injection_mode == "operator" %}
+# =============================================================================
+# Operator Configuration
+# =============================================================================
+
+k8s_tutum_operator_version={{ k8s_tutum_operator_version }}
+k8s_tutum_operator_sync_interval={{ k8s_tutum_operator_sync_interval }}
+{% if k8s_tutum_operator_watch_namespaces | default('') | length > 0 %}
+k8s_tutum_operator_watch_namespaces={{ k8s_tutum_operator_watch_namespaces }}
+{% else %}
+# k8s_tutum_operator_watch_namespaces=ns1,ns2  # Empty = watch all namespaces
+{% endif %}
+
+# Test operator deployment namespace (for tutum_test_operator role)
+k8s_tutum_test_deploy_namespace={{ k8s_tutum_test_deploy_namespace }}
+{% else %}
+# =============================================================================
 # CSI Driver Configuration
 # =============================================================================
 
-k8s_tutum_engine_url=tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:9090
+k8s_tutum_csi_version={{ k8s_tutum_csi_version }}
+{% endif %}
 
 # =============================================================================
 # Ingress Configuration (optional)

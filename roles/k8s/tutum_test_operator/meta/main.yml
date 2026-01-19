@@ -1,0 +1,33 @@
+---
+galaxy_info:
+  author: Tutum Team
+  description: Test role for Tutum Operator certificate mounting
+  company: Tutum Pro
+
+  license: Proprietary
+
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - kubernetes
+    - k8s
+    - tutum
+    - operator
+    - certificates
+    - testing
+
+dependencies: []

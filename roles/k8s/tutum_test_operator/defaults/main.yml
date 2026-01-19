@@ -1,0 +1,31 @@
+---
+# k8s_tutum_test_operator role defaults
+
+# Namespace where Tutum Platform is installed (for engine URL)
+k8s_tutum_namespace: "tutum-system"
+
+# Kubernetes namespace where test app will be deployed
+# This is the K8s namespace for Deployment and TutumCertificate CR
+k8s_tutum_test_deploy_namespace: "tutum-system"
+
+# Test application configuration
+k8s_tutum_test_app_name: "tutum-test-app"
+k8s_tutum_test_image: "busybox:latest"
+
+# Certificate configuration (for TutumCertificate CR)
+k8s_tutum_test_cert_name: "ksef-digital-fp-cert"
+k8s_tutum_test_cert_group_id: "default"
+k8s_tutum_test_cert_namespace: "default"
+k8s_tutum_test_cert_secret_name: "ksef-digital-fp-cert-secret"
+k8s_tutum_test_cert_refresh_interval: "5m"
+# Tree mode: false = flat (tls.crt, tls.key), true = tree structure (certs/, private/, ca/)
+k8s_tutum_test_cert_tree_mode: false
+# Secret type: kubernetes.io/tls or Opaque
+# NOTE: When treeMode=true, must use Opaque (kubernetes.io/tls requires flat structure)
+k8s_tutum_test_cert_secret_type: "kubernetes.io/tls"
+
+# Mount path for certificates in the pod
+k8s_tutum_test_cert_mount_path: "/etc/ssl/certs/ksef"
+
+# Action: present or absent
+k8s_tutum_test_operator_state: "present"

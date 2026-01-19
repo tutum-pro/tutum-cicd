@@ -1,0 +1,107 @@
+---
+# k8s_tutum_operator - Installation tasks
+
+# ==================== Validation ====================
+- name: Check kubectl connectivity
+  ansible.builtin.command: kubectl cluster-info
+  changed_when: false
+
+- name: Display configuration
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Operator version: {{ k8s_tutum_operator_version }}"
+      - "Tutum Engine URL: {{ k8s_tutum_engine_url }}"
+      - "Sync interval: {{ k8s_tutum_operator_sync_interval }}"
+
+# ==================== Namespace ====================
+- name: Ensure namespace exists
+  ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  changed_when: false
+
+# ==================== CRD ====================
+- name: Generate CRD manifest
+  ansible.builtin.template:
+    src: crd.yml.j2
+    dest: /tmp/tutum-operator-crd.yml
+    mode: '0600'
+
+- name: Apply CRD
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-operator-crd.yml
+  changed_when: true
+
+# ==================== RBAC ====================
+- name: Generate RBAC manifest
+  ansible.builtin.template:
+    src: rbac.yml.j2
+    dest: /tmp/tutum-operator-rbac.yml
+    mode: '0600'
+
+- name: Apply RBAC resources
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-operator-rbac.yml
+  changed_when: true
+
+# ==================== Deployment ====================
+- name: Generate Operator Deployment manifest
+  ansible.builtin.template:
+    src: deployment.yml.j2
+    dest: /tmp/tutum-operator-deployment.yml
+    mode: '0600'
+
+- name: Apply Operator Deployment
+  ansible.builtin.command: kubectl apply -f /tmp/tutum-operator-deployment.yml
+  changed_when: true
+
+# ==================== Cleanup temp files ====================
+- name: Remove temporary manifest files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/tutum-operator-crd.yml
+    - /tmp/tutum-operator-rbac.yml
+    - /tmp/tutum-operator-deployment.yml
+
+# ==================== Wait for Deployment ====================
+- name: Wait for Operator to be ready
+  ansible.builtin.command: >
+    kubectl rollout status deployment/tutum-operator
+    -n {{ k8s_tutum_namespace }} --timeout=300s
+  changed_when: false
+
+# ==================== Verification ====================
+- name: Verify CRD is registered
+  ansible.builtin.command: kubectl get crd tutumcertificates.tutum.io
+  changed_when: false
+
+- name: Get Operator status
+  ansible.builtin.command: >
+    kubectl get deployment tutum-operator -n {{ k8s_tutum_namespace }}
+    -o jsonpath='{.status.readyReplicas}'
+  register: _operator_ready
+  changed_when: false
+
+- name: Display installation result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Operator deployed successfully!"
+      - ""
+      - "Namespace: {{ k8s_tutum_namespace }}"
+      - "Operator version: {{ k8s_tutum_operator_version }}"
+      - ""
+      - "Components:"
+      - "  - Operator: {{ _operator_ready.stdout | default('0') }}/1 ready"
+      - ""
+      - "Tutum Engine URL: {{ k8s_tutum_engine_url }}"
+      - "Sync interval: {{ k8s_tutum_operator_sync_interval }}"
+      - ""
+      - "Usage example (TutumCertificate):"
+      - "  apiVersion: tutum.io/v1"
+      - "  kind: TutumCertificate"
+      - "  metadata:"
+      - "    name: my-cert"
+      - "    namespace: my-app"
+      - "  spec:"
+      - "    certificateName: web-server"
+      - "    groupId: production"
+      - "    namespace: default"
+      - "    secretName: web-tls-secret"

@@ -40,6 +40,10 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
 ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
   -e k8s_tutum_init_distribution=microk8s
 
+# Use rootless Operator instead of CSI driver
+ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
+  -e k8s_tutum_init_injection_mode=operator
+
 # Overwrite existing files
 ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
   -e k8s_tutum_init_overwrite=true
@@ -56,6 +60,7 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
 | `k8s_tutum_init_inventory_file` | `k8s.ini` | Inventory filename |
 | `k8s_tutum_init_playbook_file` | `tutum-k8s-install.yml` | Playbook filename |
 | `k8s_tutum_init_overwrite` | `false` | Overwrite existing files |
+| `k8s_tutum_init_ansible_python_interpreter` | `auto` | Python interpreter (`auto` = autodiscover) |
 
 ### Kubernetes Configuration
 
@@ -110,13 +115,28 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
 | `k8s_tutum_init_master_key` | `""` | Master key (empty = auto-generate) |
 | `k8s_tutum_init_jwt_secret` | `""` | JWT secret (empty = auto-generate) |
 
+### Certificate Injection Mode
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_init_injection_mode` | `csi` | Injection mode: `csi` or `operator` |
+
+- **csi**: Uses CSI driver (requires privileged containers, real-time certificate mounts)
+- **operator**: Uses Kubernetes operator (rootless, syncs certificates to Secrets)
+
+### Operator Configuration (for injection_mode=operator)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_operator_version` | `1.0.0` | Tutum Operator version |
+| `k8s_tutum_operator_sync_interval` | `5m` | Default certificate sync interval |
+
 ### Component Selection
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `k8s_tutum_init_generate_postgres` | `true` | Generate PostgreSQL (for embedded/cnpg modes) |
 | `k8s_tutum_init_generate_engine` | `true` | Generate Tutum Engine role |
-| `k8s_tutum_init_generate_csi` | `true` | Generate CSI Driver role |
 
 ## Generated Files
 
@@ -131,7 +151,7 @@ After running the role:
 2. **Playbook** (`tutum-k8s-install.yml`):
    - Deploys PostgreSQL (embedded or CNPG based on mode)
    - Deploys Tutum Engine
-   - Deploys CSI Driver
+   - Deploys CSI Driver or Operator (based on injection_mode)
    - Auto-generates security keys if not provided
 
 ## Customizing the Installation
@@ -153,6 +173,17 @@ k8s_tutum_jwt_secret=AnotherSecure32CharJwtSecret!!
 # For CNPG mode - adjust cluster settings
 k8s_tutum_cnpg_instances=3
 k8s_tutum_cnpg_storage_size=10Gi
+```
+
+## Python Interpreter Autodiscovery
+
+The role automatically detects the Python interpreter used to run Ansible and uses the same path in the generated inventory. This ensures compatibility with virtual environments and non-standard Python installations.
+
+To use a specific Python interpreter instead of autodiscovery:
+
+```bash
+ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
+  -e k8s_tutum_init_ansible_python_interpreter=/path/to/python3
 ```
 
 ## Installation
@@ -177,6 +208,25 @@ ansible-playbook -i inventory/k8s.ini tutum-k8s-install.yml
 | Backup/restore | Manual | Built-in | Depends |
 | Complexity | Low | Medium | N/A |
 | Production ready | No | Yes | Yes |
+
+## Injection Mode Comparison
+
+| Feature | CSI Driver | Operator |
+|---------|------------|----------|
+| Root required | Yes (mount syscalls) | No (rootless) |
+| Real-time mounts | Yes | No (periodic sync) |
+| Pod restart on update | Not needed | May need Reloader |
+| Resource usage | DaemonSet (per node) | Single Deployment |
+| Complexity | Higher | Lower |
+
+Choose **CSI driver** (`csi`) when you need:
+- Real-time certificate updates in pods
+- No pod restarts on certificate changes
+
+Choose **Operator** (`operator`) when you need:
+- Rootless deployment (security requirement)
+- Simpler architecture
+- Standard Secret-based certificate delivery
 
 ## License
 

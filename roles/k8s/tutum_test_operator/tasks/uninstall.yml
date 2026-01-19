@@ -1,0 +1,25 @@
+---
+# k8s_tutum_test_operator - Uninstall tasks
+
+- name: Delete test Deployment
+  ansible.builtin.command: >
+    kubectl delete deployment {{ k8s_tutum_test_app_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Delete TutumCertificate
+  ansible.builtin.command: >
+    kubectl delete tutumcertificate {{ k8s_tutum_test_cert_name }}
+    -n {{ k8s_tutum_test_deploy_namespace }} --ignore-not-found=true
+  changed_when: true
+
+- name: Display uninstall result
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Operator Test uninstalled!"
+      - ""
+      - "Removed:"
+      - "  - Deployment: {{ k8s_tutum_test_app_name }}"
+      - "  - TutumCertificate: {{ k8s_tutum_test_cert_name }}"
+      - ""
+      - "Note: Secret {{ k8s_tutum_test_cert_secret_name }} may be orphaned if operator deleted it."

@@ -1,0 +1,160 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tutumcertificates.tutum.io
+  labels:
+    app.kubernetes.io/name: tutum-operator
+    app.kubernetes.io/version: "{{ k8s_tutum_operator_version }}"
+    app.kubernetes.io/managed-by: ansible
+spec:
+  group: tutum.io
+  names:
+    kind: TutumCertificate
+    listKind: TutumCertificateList
+    plural: tutumcertificates
+    singular: tutumcertificate
+    shortNames:
+      - tcert
+      - tcerts
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - certificateName
+                - secretName
+              x-kubernetes-validations:
+                # When treeMode=false (single mode), groupId and namespace are required and must be non-empty
+                - rule: "self.treeMode == true || (has(self.groupId) && self.groupId != '')"
+                  message: "groupId is required and must be non-empty when treeMode is false"
+                - rule: "self.treeMode == true || (has(self.namespace) && self.namespace != '')"
+                  message: "namespace is required and must be non-empty when treeMode is false"
+                # When treeMode=true, groupId and namespace must be empty
+                - rule: "self.treeMode == false || !has(self.groupId) || self.groupId == ''"
+                  message: "groupId must be empty when treeMode is true"
+                - rule: "self.treeMode == false || !has(self.namespace) || self.namespace == ''"
+                  message: "namespace must be empty when treeMode is true"
+              properties:
+                certificateName:
+                  type: string
+                  description: Name of the certificate in Tutum Engine
+                groupId:
+                  type: string
+                  description: Group ID in Tutum Engine (required when treeMode=false)
+                namespace:
+                  type: string
+                  description: Namespace in Tutum Engine (required when treeMode=false)
+                secretName:
+                  type: string
+                  description: Name of Kubernetes Secret to create
+                version:
+                  type: integer
+                  default: 0
+                  description: Certificate version (0 = latest)
+                refreshInterval:
+                  type: string
+                  default: "5m"
+                  description: How often to sync the certificate
+                channel:
+                  type: string
+                  default: "default"
+                  description: Distribution channel
+                authToken:
+                  type: string
+                  description: Auth token for non-default channels
+                secretType:
+                  type: string
+                  enum:
+                    - kubernetes.io/tls
+                    - Opaque
+                  default: "kubernetes.io/tls"
+                  description: Type of Kubernetes Secret to create
+                engineUrl:
+                  type: string
+                  description: Override Tutum Engine URL
+                includeCa:
+                  type: boolean
+                  default: true
+                  description: Include CA certificate in secret
+                treeMode:
+                  type: boolean
+                  default: false
+                  description: Use tree structure for certificate files (certs/, private/, ca/)
+                secretLabels:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Additional labels for the Secret
+                secretAnnotations:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Additional annotations for the Secret
+            status:
+              type: object
+              properties:
+                lastSyncTime:
+                  type: string
+                  format: date-time
+                  description: When the certificate was last synced
+                currentVersion:
+                  type: integer
+                  description: Version of certificate in the Secret
+                certificateExpiry:
+                  type: string
+                  format: date-time
+                  description: When the certificate expires
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - "Unknown"
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Certificate
+          type: string
+          jsonPath: .spec.certificateName
+        - name: Secret
+          type: string
+          jsonPath: .spec.secretName
+        - name: Version
+          type: integer
+          jsonPath: .status.currentVersion
+        - name: Expiry
+          type: string
+          jsonPath: .status.certificateExpiry
+        - name: Last Sync
+          type: string
+          jsonPath: .status.lastSyncTime
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp

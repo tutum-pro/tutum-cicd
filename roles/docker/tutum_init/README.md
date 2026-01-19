@@ -59,7 +59,7 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
 | `docker_tutum_init_target_host` | `localhost` | Host docelowy (IP lub DNS) |
 | `docker_tutum_init_target_hostname` | `""` | Nazwa hosta w inventory (domyślnie: target_host) |
 | `docker_tutum_init_ansible_connection` | `local` | Typ połączenia: `local` lub `ssh` |
-| `docker_tutum_init_ansible_python_interpreter` | `/usr/bin/python3` | Interpreter Python |
+| `docker_tutum_init_ansible_python_interpreter` | `auto` | Interpreter Python (`auto` = autodetekcja) |
 | `docker_tutum_init_ansible_user` | `""` | Użytkownik SSH (dla zdalnych hostów) |
 | `docker_tutum_init_ansible_ssh_key` | `""` | Ścieżka do klucza SSH |
 | `docker_tutum_init_ansible_ssh_pass` | `""` | Hasło SSH (użyj ansible-vault w produkcji) |
@@ -106,6 +106,17 @@ Te zmienne używają tych samych nazw co inne role (single source of truth):
 | Zmienna | Domyślnie | Opis |
 |---------|-----------|------|
 | `docker_tutum_init_become` | `true` | Użyj sudo w wygenerowanym playboo |
+
+## Autodetekcja interpretera Python
+
+Rola automatycznie wykrywa ścieżkę do interpretera Python używanego przez Ansible i zapisuje ją w wygenerowanym inventory. Zapewnia to kompatybilność z wirtualnymi środowiskami i niestandardowymi instalacjami Pythona.
+
+Aby użyć konkretnego interpretera:
+
+```bash
+ansible localhost -m include_role -a name=tutum_pro.cicd.docker.tutum_init \
+  -e docker_tutum_init_ansible_python_interpreter=/path/to/python3
+```
 
 ## Wygenerowane pliki
 

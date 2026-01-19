@@ -1,6 +1,35 @@
 ---
 # k8s_tutum_init - Generate Kubernetes installation files
 
+# ==================== Python Interpreter Autodiscovery ====================
+- name: Autodiscover Python interpreter path
+  when: k8s_tutum_init_ansible_python_interpreter == "auto"
+  block:
+    - name: Get current Python interpreter path
+      ansible.builtin.command: which python3
+      register: _python3_path
+      changed_when: false
+      failed_when: false
+
+    - name: Fallback to sys.executable if which fails
+      ansible.builtin.set_fact:
+        _discovered_python: "{{ ansible_playbook_python }}"
+      when: _python3_path.rc != 0
+
+    - name: Use discovered python3 path
+      ansible.builtin.set_fact:
+        _discovered_python: "{{ _python3_path.stdout | trim }}"
+      when: _python3_path.rc == 0
+
+    - name: Set autodiscovered Python interpreter
+      ansible.builtin.set_fact:
+        k8s_tutum_init_ansible_python_interpreter: "{{ _discovered_python }}"
+
+- name: Display Python interpreter
+  ansible.builtin.debug:
+    msg: "Using Python interpreter: {{ k8s_tutum_init_ansible_python_interpreter }}"
+
+# ==================== Directory Setup ====================
 - name: Ensure output directory exists
   ansible.builtin.file:
     path: "{{ k8s_tutum_init_output_path }}"

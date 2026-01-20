@@ -12,12 +12,12 @@ spec:
   # Certificate identification in Tutum Engine
   certificateName: {{ k8s_tutum_test_cert_name }}
 {% if k8s_tutum_test_cert_tree_mode %}
-  # When treeMode=true, groupId and namespace must be empty
+  # When treeMode=true, groupId and certNamespace must be empty
   groupId: ""
-  namespace: ""
+  certNamespace: ""
 {% else %}
   groupId: {{ k8s_tutum_test_cert_group_id }}
-  namespace: {{ k8s_tutum_test_cert_namespace }}
+  certNamespace: {{ k8s_tutum_test_cert_namespace }}
 {% endif %}
 
   # Kubernetes Secret to create

@@ -34,16 +34,16 @@ spec:
                 - certificateName
                 - secretName
               x-kubernetes-validations:
-                # When treeMode=false (single mode), groupId and namespace are required and must be non-empty
+                # When treeMode=false (single mode), groupId and certNamespace are required and must be non-empty
                 - rule: "self.treeMode == true || (has(self.groupId) && self.groupId != '')"
                   message: "groupId is required and must be non-empty when treeMode is false"
-                - rule: "self.treeMode == true || (has(self.namespace) && self.namespace != '')"
-                  message: "namespace is required and must be non-empty when treeMode is false"
-                # When treeMode=true, groupId and namespace must be empty
+                - rule: "self.treeMode == true || (has(self.certNamespace) && self.certNamespace != '')"
+                  message: "certNamespace is required and must be non-empty when treeMode is false"
+                # When treeMode=true, groupId and certNamespace must be empty
                 - rule: "self.treeMode == false || !has(self.groupId) || self.groupId == ''"
                   message: "groupId must be empty when treeMode is true"
-                - rule: "self.treeMode == false || !has(self.namespace) || self.namespace == ''"
-                  message: "namespace must be empty when treeMode is true"
+                - rule: "self.treeMode == false || !has(self.certNamespace) || self.certNamespace == ''"
+                  message: "certNamespace must be empty when treeMode is true"
               properties:
                 certificateName:
                   type: string
@@ -51,7 +51,7 @@ spec:
                 groupId:
                   type: string
                   description: Group ID in Tutum Engine (required when treeMode=false)
-                namespace:
+                certNamespace:
                   type: string
                   description: Namespace in Tutum Engine (required when treeMode=false)
                 secretName:

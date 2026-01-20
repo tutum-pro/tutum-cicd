@@ -73,8 +73,8 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `k8s_tutum_engine_version` | `5.0.8` | Tutum Engine version |
-| `k8s_tutum_csi_version` | `4.0.0` | CSI Driver version |
+| `k8s_tutum_engine_version` | `5.1.5` | Tutum Engine version |
+| `k8s_tutum_csi_version` | `4.0.1` | CSI Driver version |
 | `k8s_tutum_postgres_version` | `15-alpine` | PostgreSQL version (embedded mode only) |
 
 ### Database Mode

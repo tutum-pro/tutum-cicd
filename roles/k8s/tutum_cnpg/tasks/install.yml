@@ -33,6 +33,18 @@
       ansible.builtin.debug:
         msg: "CNPG Operator {{ k8s_tutum_cnpg_operator_version }} installed successfully"
 
+# ==================== Wait for CNPG Webhook ====================
+
+- name: Wait for CNPG operator webhook to be ready
+  ansible.builtin.command: >
+    kubectl rollout status deployment/cnpg-controller-manager
+    -n {{ k8s_tutum_cnpg_operator_namespace }} --timeout=120s
+  changed_when: false
+  register: _cnpg_webhook_ready
+  retries: 3
+  delay: 10
+  until: _cnpg_webhook_ready.rc == 0
+
 # ==================== PostgreSQL Cluster ====================
 
 - name: Generate cluster namespace manifest

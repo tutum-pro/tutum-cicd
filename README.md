@@ -191,7 +191,7 @@ Deploys Tutum CSI Driver to Kubernetes for certificate volume provisioning.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `k8s_tutum_csi_version` | `3.1.0` | CSI Driver version |
+| `k8s_tutum_csi_version` | `4.0.1` | CSI Driver version |
 | `k8s_tutum_namespace` | `tutum-system` | Kubernetes namespace |
 | `k8s_distribution` | `standard` | K8s distribution: `standard`, `microk8s`, `k3s`, `openshift` |
 | `k8s_tutum_engine_url` | `tutum-engine.tutum-system.svc.cluster.local:9090` | Tutum Engine gRPC URL |

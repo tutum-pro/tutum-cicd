@@ -26,6 +26,89 @@
   ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_test_deploy_namespace }} --dry-run=client -o yaml | kubectl apply -f -
   changed_when: false
 
+# ==================== Create Certificate in Tutum Engine ====================
+- name: Generate self-signed test certificate
+  when: k8s_tutum_test_generate_cert and (k8s_tutum_test_cert_pem == '' or k8s_tutum_test_key_pem == '')
+  block:
+    - name: Generate private key
+      ansible.builtin.command: >
+        openssl genrsa -out /tmp/tutum-test.key 2048
+      changed_when: true
+
+    - name: Generate self-signed certificate
+      ansible.builtin.command: >
+        openssl req -new -x509 -key /tmp/tutum-test.key
+        -out /tmp/tutum-test.crt
+        -days {{ k8s_tutum_test_cert_validity_days }}
+        -subj "/CN={{ k8s_tutum_test_cert_cn }}/O=TutumTest"
+      changed_when: true
+
+    - name: Read generated certificate
+      ansible.builtin.slurp:
+        src: /tmp/tutum-test.crt
+      register: _generated_cert
+
+    - name: Read generated private key
+      ansible.builtin.slurp:
+        src: /tmp/tutum-test.key
+      register: _generated_key
+
+    - name: Set certificate variables
+      ansible.builtin.set_fact:
+        _test_cert_pem: "{{ _generated_cert.content | b64decode }}"
+        _test_key_pem: "{{ _generated_key.content | b64decode }}"
+
+    - name: Cleanup temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/tutum-test.crt
+        - /tmp/tutum-test.key
+
+- name: Use provided certificate
+  when: k8s_tutum_test_cert_pem != '' and k8s_tutum_test_key_pem != ''
+  ansible.builtin.set_fact:
+    _test_cert_pem: "{{ k8s_tutum_test_cert_pem }}"
+    _test_key_pem: "{{ k8s_tutum_test_key_pem }}"
+
+- name: Save certificate JSON payload to temp file
+  ansible.builtin.copy:
+    content: |
+      {
+        "name": "{{ k8s_tutum_test_cert_name }}",
+        "certificate_pem": {{ _test_cert_pem | to_json }},
+        "private_key_pem": {{ _test_key_pem | to_json }}
+      }
+    dest: /tmp/tutum-test-cert-payload.json
+    mode: '0600'
+
+- name: Create certificate in Tutum Engine via kubectl run curl
+  ansible.builtin.shell: |
+    kubectl run tutum-test-curl --rm -i --restart=Never \
+      --image=curlimages/curl:latest \
+      -n {{ k8s_tutum_namespace }} \
+      -- curl -s -X POST \
+      -H 'Content-Type: application/json' \
+      -d @- \
+      http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:8080/api/v1/certificates \
+      < /tmp/tutum-test-cert-payload.json
+  register: _cert_create_result
+  changed_when: "'id' in _cert_create_result.stdout"
+  failed_when: false
+
+- name: Cleanup local payload file
+  ansible.builtin.file:
+    path: /tmp/tutum-test-cert-payload.json
+    state: absent
+
+- name: Display certificate creation result
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Certificate created in Tutum Engine' if ('id' in _cert_create_result.stdout)
+         else ('Certificate already exists' if ('already exists' in _cert_create_result.stdout or 'duplicate' in _cert_create_result.stdout.lower())
+         else 'Certificate creation response: ' ~ _cert_create_result.stdout) }}
+
 # ==================== TutumCertificate ====================
 - name: Generate TutumCertificate manifest
   ansible.builtin.template:

@@ -27,5 +27,20 @@ k8s_tutum_test_cert_secret_type: "kubernetes.io/tls"
 # Mount path for certificates in the pod
 k8s_tutum_test_cert_mount_path: "/etc/ssl/certs/ksef"
 
+# Tutum Engine REST API URL (for creating test certificate)
+k8s_tutum_engine_rest_url: "http://tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:8080"
+
+# Test certificate PEM data (self-signed for testing)
+# These are auto-generated if empty
+k8s_tutum_test_cert_pem: ""
+k8s_tutum_test_key_pem: ""
+
+# Generate self-signed certificate if PEM data is not provided
+k8s_tutum_test_generate_cert: true
+# Certificate validity in days (for generated cert)
+k8s_tutum_test_cert_validity_days: 365
+# Common Name for generated certificate
+k8s_tutum_test_cert_cn: "test.tutum.local"
+
 # Action: present or absent
 k8s_tutum_test_operator_state: "present"

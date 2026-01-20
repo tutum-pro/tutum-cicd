@@ -69,10 +69,14 @@ spec:
               cpu: "{{ k8s_tutum_csi_controller_resources.driver.limits.cpu }}"
               memory: "{{ k8s_tutum_csi_controller_resources.driver.limits.memory }}"
           securityContext:
-            privileged: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+{% if k8s_distribution != 'openshift' %}
+            runAsUser: 1000
+{% endif %}
             capabilities:
-              add: ["SYS_ADMIN"]
-            allowPrivilegeEscalation: true
+              drop: ["ALL"]
       volumes:
         - name: socket-dir
           emptyDir: {}

@@ -1,0 +1,336 @@
+---
+# k8s_tutum_offline_bundle - Main tasks
+# Prepare offline bundle for air-gapped Tutum Platform installation
+
+# ==================== Gather Facts ====================
+
+- name: Gather date/time facts
+  ansible.builtin.setup:
+    gather_subset:
+      - date_time
+
+# ==================== Validation ====================
+
+- name: Validate configuration
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_offline_db_mode in ['embedded', 'cnpg', 'external']
+      - k8s_tutum_offline_injection_mode in ['csi', 'operator']
+    fail_msg: |
+      Invalid configuration:
+      - db_mode must be: embedded, cnpg, or external
+      - injection_mode must be: csi or operator
+
+- name: Check Docker is available
+  ansible.builtin.command: docker version
+  changed_when: false
+  register: _docker_check
+  failed_when: _docker_check.rc != 0
+
+# ==================== Parse Inventory (optional) ====================
+
+- name: Parse inventory file if provided
+  when: k8s_tutum_offline_inventory_path | length > 0
+  block:
+    - name: Check inventory file exists
+      ansible.builtin.stat:
+        path: "{{ k8s_tutum_offline_inventory_path }}"
+      register: _inventory_stat
+
+    - name: Fail if inventory not found
+      ansible.builtin.fail:
+        msg: "Inventory file not found: {{ k8s_tutum_offline_inventory_path }}"
+      when: not _inventory_stat.stat.exists
+
+    - name: Read inventory file
+      ansible.builtin.slurp:
+        src: "{{ k8s_tutum_offline_inventory_path }}"
+      register: _inventory_content
+
+    - name: Parse inventory variables
+      ansible.builtin.set_fact:
+        _parsed_vars: "{{ dict(_inventory_content.content | b64decode | regex_findall('(k8s_[a-z0-9_]+)=([^\\s#]+)')) }}"
+
+    - name: Override variables from inventory
+      ansible.builtin.set_fact:
+        k8s_tutum_engine_version: "{{ _parsed_vars.k8s_tutum_engine_version | default(k8s_tutum_engine_version) }}"
+        k8s_tutum_csi_version: "{{ _parsed_vars.k8s_tutum_csi_version | default(k8s_tutum_csi_version) }}"
+        k8s_tutum_operator_version: "{{ _parsed_vars.k8s_tutum_operator_version | default(k8s_tutum_operator_version) }}"
+        k8s_tutum_postgres_version: "{{ _parsed_vars.k8s_tutum_postgres_version | default(k8s_tutum_postgres_version) }}"
+        k8s_tutum_cnpg_operator_version: "{{ _parsed_vars.k8s_tutum_cnpg_operator_version | default(k8s_tutum_cnpg_operator_version) }}"
+        k8s_tutum_cnpg_postgres_version: "{{ _parsed_vars.k8s_tutum_cnpg_postgres_version | default(k8s_tutum_cnpg_postgres_version) }}"
+        k8s_distribution: "{{ _parsed_vars.k8s_distribution | default(k8s_distribution) }}"
+        k8s_tutum_offline_db_mode: "{{ _parsed_vars.k8s_tutum_init_db_mode | default(k8s_tutum_offline_db_mode) }}"
+        k8s_tutum_offline_injection_mode: "{{ _parsed_vars.k8s_tutum_init_injection_mode | default(k8s_tutum_offline_injection_mode) }}"
+
+# ==================== Create Output Directory ====================
+
+- name: Create output directory
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_offline_output_path }}"
+    state: directory
+    mode: '0755'
+  when: k8s_tutum_offline_create_dir | bool
+
+- name: Create subdirectories
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_offline_output_path }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - images
+    - collection
+    - scripts
+    - manifests
+
+# ==================== Build Image List ====================
+
+- name: Build list of required images
+  ansible.builtin.set_fact:
+    _required_images: "{{ _required_images | default([]) + [item] }}"
+  loop:
+    # Tutum Engine (always required)
+    - name: "{{ k8s_tutum_engine_image }}"
+      tag: "{{ k8s_tutum_engine_version }}"
+      component: "engine"
+
+- name: Add PostgreSQL image (embedded mode)
+  ansible.builtin.set_fact:
+    _required_images: "{{ _required_images + [item] }}"
+  loop:
+    - name: "{{ k8s_tutum_postgres_image }}"
+      tag: "{{ k8s_tutum_postgres_version }}"
+      component: "postgres"
+  when: k8s_tutum_offline_db_mode == 'embedded'
+
+- name: Add CNPG images (cnpg mode)
+  ansible.builtin.set_fact:
+    _required_images: "{{ _required_images + [item] }}"
+  loop:
+    - name: "{{ k8s_tutum_cnpg_operator_image }}"
+      tag: "{{ k8s_tutum_cnpg_operator_version }}"
+      component: "cnpg-operator"
+    - name: "{{ k8s_tutum_cnpg_postgres_image }}"
+      tag: "{{ k8s_tutum_cnpg_postgres_version }}"
+      component: "cnpg-postgres"
+  when: k8s_tutum_offline_db_mode == 'cnpg'
+
+- name: Add CSI driver images (csi mode)
+  ansible.builtin.set_fact:
+    _required_images: "{{ _required_images + [item] }}"
+  loop:
+    - name: "{{ k8s_tutum_csi_image }}"
+      tag: "{{ k8s_tutum_csi_version }}"
+      component: "csi-driver"
+    - name: "{{ k8s_csi_provisioner_image }}"
+      tag: "{{ k8s_csi_provisioner_version }}"
+      component: "csi-provisioner"
+    - name: "{{ k8s_csi_node_driver_registrar_image }}"
+      tag: "{{ k8s_csi_node_driver_registrar_version }}"
+      component: "csi-registrar"
+  when: k8s_tutum_offline_injection_mode == 'csi'
+
+- name: Add Operator image (operator mode)
+  ansible.builtin.set_fact:
+    _required_images: "{{ _required_images + [item] }}"
+  loop:
+    - name: "{{ k8s_tutum_operator_image }}"
+      tag: "{{ k8s_tutum_operator_version }}"
+      component: "operator"
+  when: k8s_tutum_offline_injection_mode == 'operator'
+
+- name: Display images to download
+  ansible.builtin.debug:
+    msg: "Will download {{ _required_images | length }} images: {{ _required_images | map(attribute='name') | list }}"
+
+# ==================== Pull Images ====================
+
+- name: Pull required images
+  ansible.builtin.command: "docker pull {{ item.name }}:{{ item.tag }}"
+  loop: "{{ _required_images }}"
+  loop_control:
+    label: "{{ item.name }}:{{ item.tag }}"
+  register: _pull_results
+  changed_when: "'Downloaded newer image' in _pull_results.stdout or 'Pull complete' in _pull_results.stdout"
+
+# ==================== Retag Images (optional) ====================
+
+- name: Retag images for internal registry
+  when:
+    - k8s_tutum_offline_internal_registry | length > 0
+    - k8s_tutum_offline_save_retagged | bool
+  block:
+    - name: Build internal image names
+      ansible.builtin.set_fact:
+        _retagged_images: "{{ _retagged_images | default([]) + [{'original': item.name ~ ':' ~ item.tag, 'internal': k8s_tutum_offline_internal_registry ~ '/' ~ k8s_tutum_offline_internal_prefix ~ '/' ~ (item.name | basename) ~ ':' ~ item.tag, 'component': item.component}] }}"
+      loop: "{{ _required_images }}"
+
+    - name: Tag images for internal registry
+      ansible.builtin.command: "docker tag {{ item.original }} {{ item.internal }}"
+      loop: "{{ _retagged_images }}"
+      loop_control:
+        label: "{{ item.original }} -> {{ item.internal }}"
+      changed_when: true
+
+# ==================== Save Images ====================
+
+- name: Save original images to tar files
+  ansible.builtin.command: >
+    docker save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}.tar
+    {{ item.name }}:{{ item.tag }}
+  loop: "{{ _required_images }}"
+  loop_control:
+    label: "{{ item.name }}:{{ item.tag }}"
+  changed_when: true
+
+- name: Save retagged images to tar files
+  when:
+    - k8s_tutum_offline_internal_registry | length > 0
+    - k8s_tutum_offline_save_retagged | bool
+  ansible.builtin.command: >
+    docker save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}-internal.tar
+    {{ item.internal }}
+  loop: "{{ _retagged_images }}"
+  loop_control:
+    label: "{{ item.internal }}"
+  changed_when: true
+
+# ==================== Download Ansible Collection ====================
+
+- name: Download Ansible collection
+  when: k8s_tutum_offline_include_collection | bool
+  block:
+    - name: Download from Galaxy
+      when: k8s_tutum_offline_collection_source == 'galaxy'
+      ansible.builtin.command: >
+        ansible-galaxy collection download {{ k8s_tutum_offline_collection_name }}{% if k8s_tutum_offline_collection_version %}:{{ k8s_tutum_offline_collection_version }}{% endif %}
+        -p {{ k8s_tutum_offline_output_path }}/collection
+      changed_when: true
+
+    - name: Clone from Git
+      when: k8s_tutum_offline_collection_source == 'git'
+      block:
+        - name: Clone repository
+          ansible.builtin.git:
+            repo: "{{ k8s_tutum_offline_collection_git_url }}"
+            dest: "{{ k8s_tutum_offline_output_path }}/collection/tutum-cicd"
+            version: "{{ k8s_tutum_offline_collection_version | default('HEAD') }}"
+
+        - name: Build collection
+          ansible.builtin.command:
+            cmd: ansible-galaxy collection build --force
+            chdir: "{{ k8s_tutum_offline_output_path }}/collection/tutum-cicd"
+          changed_when: true
+
+    - name: Copy local collection
+      when: k8s_tutum_offline_collection_source == 'local'
+      block:
+        - name: Build local collection
+          ansible.builtin.command:
+            cmd: ansible-galaxy collection build --force --output-path {{ k8s_tutum_offline_output_path }}/collection
+            chdir: "{{ k8s_tutum_offline_collection_local_path }}"
+          changed_when: true
+
+# ==================== Generate Scripts ====================
+
+- name: Generate load-images script
+  when: k8s_tutum_offline_include_scripts | bool
+  ansible.builtin.template:
+    src: load-images.sh.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/scripts/load-images.sh"
+    mode: '0755'
+
+- name: Generate push-images script
+  when:
+    - k8s_tutum_offline_include_scripts | bool
+    - k8s_tutum_offline_internal_registry | length > 0
+  ansible.builtin.template:
+    src: push-images.sh.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/scripts/push-images.sh"
+    mode: '0755'
+
+- name: Generate install-collection script
+  when: k8s_tutum_offline_include_scripts | bool
+  ansible.builtin.template:
+    src: install-collection.sh.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/scripts/install-collection.sh"
+    mode: '0755'
+
+# ==================== Generate Sample Files ====================
+
+- name: Generate sample inventory
+  when: k8s_tutum_offline_include_sample_inventory | bool
+  ansible.builtin.template:
+    src: sample-inventory.ini.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/sample-inventory.ini"
+    mode: '0644'
+
+- name: Generate README
+  when: k8s_tutum_offline_include_readme | bool
+  ansible.builtin.template:
+    src: README.md.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/README.md"
+    mode: '0644'
+
+# ==================== Generate Image Manifest ====================
+
+- name: Generate image manifest
+  ansible.builtin.template:
+    src: images-manifest.yml.j2
+    dest: "{{ k8s_tutum_offline_output_path }}/images-manifest.yml"
+    mode: '0644'
+
+# ==================== Create Archive ====================
+
+- name: Set archive filename
+  ansible.builtin.set_fact:
+    _archive_filename: "{{ k8s_tutum_offline_archive_name }}{% if k8s_tutum_offline_archive_timestamp %}-{{ ansible_date_time.date }}{% endif %}.tar.gz"
+
+- name: Create archive
+  ansible.builtin.command:
+    cmd: >
+      tar -czvf {{ _archive_filename }}
+      -C {{ k8s_tutum_offline_output_path | dirname }}
+      {{ k8s_tutum_offline_output_path | basename }}
+    chdir: "{{ k8s_tutum_offline_output_path | dirname }}"
+  changed_when: true
+
+- name: Get archive size
+  ansible.builtin.stat:
+    path: "{{ k8s_tutum_offline_output_path | dirname }}/{{ _archive_filename }}"
+  register: _archive_stat
+
+# ==================== Summary ====================
+
+- name: Display summary
+  vars:
+    _step_push: "{{ '4. Push to registry: ./scripts/push-images.sh' if k8s_tutum_offline_internal_registry else '' }}"
+    _step_install: "{{ '5' if k8s_tutum_offline_internal_registry else '4' }}. Install collection: ./scripts/install-collection.sh"
+    _step_run: "{{ '6' if k8s_tutum_offline_internal_registry else '5' }}. Run installation playbook"
+  ansible.builtin.debug:
+    msg: |
+      ==============================================
+        Tutum Offline Bundle Created Successfully!
+      ==============================================
+
+      Bundle location: {{ k8s_tutum_offline_output_path | dirname }}/{{ _archive_filename }}
+      Bundle size: {{ (_archive_stat.stat.size / 1024 / 1024) | round(2) }} MB
+
+      Contents:
+        - {{ _required_images | length }} Docker images
+        - Ansible collection: {{ k8s_tutum_offline_collection_name }}
+        - Installation scripts
+        - Sample inventory
+
+      Configuration:
+        - Database mode: {{ k8s_tutum_offline_db_mode }}
+        - Injection mode: {{ k8s_tutum_offline_injection_mode }}
+      {{ '  - Internal registry: ' ~ k8s_tutum_offline_internal_registry if k8s_tutum_offline_internal_registry else '' }}
+
+      To use on air-gapped system:
+        1. Copy {{ _archive_filename }} to target system
+        2. Extract: tar -xzf {{ _archive_filename }}
+        3. Load images: ./scripts/load-images.sh
+      {{ '  ' ~ _step_push if _step_push else '' }}
+        {{ _step_install }}
+        {{ _step_run }}

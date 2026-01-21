@@ -1,0 +1,155 @@
+# Tutum Platform - Offline Installation Bundle
+
+This bundle contains all components needed for air-gapped (offline) installation of Tutum Platform on Kubernetes.
+
+## Bundle Information
+
+- **Generated:** {{ ansible_date_time.iso8601 }}
+- **Database Mode:** {{ k8s_tutum_offline_db_mode }}
+- **Injection Mode:** {{ k8s_tutum_offline_injection_mode }}
+{% if k8s_tutum_offline_internal_registry | length > 0 %}
+- **Internal Registry:** {{ k8s_tutum_offline_internal_registry }}
+{% endif %}
+
+## Contents
+
+```
+{{ k8s_tutum_offline_output_path | basename }}/
+├── images/                    # Docker images as tar files
+│   ├── engine.tar            # Tutum Engine
+{% if k8s_tutum_offline_db_mode == 'embedded' %}
+│   ├── postgres.tar          # PostgreSQL
+{% elif k8s_tutum_offline_db_mode == 'cnpg' %}
+│   ├── cnpg-operator.tar     # CloudNativePG Operator
+│   ├── cnpg-postgres.tar     # CloudNativePG PostgreSQL
+{% endif %}
+{% if k8s_tutum_offline_injection_mode == 'csi' %}
+│   ├── csi-driver.tar        # Tutum CSI Driver
+│   ├── csi-provisioner.tar   # CSI Provisioner
+│   └── csi-registrar.tar     # CSI Node Registrar
+{% elif k8s_tutum_offline_injection_mode == 'operator' %}
+│   └── operator.tar          # Tutum Operator
+{% endif %}
+├── collection/               # Ansible collection
+│   └── {{ k8s_tutum_offline_collection_name | replace('.', '-') }}-*.tar.gz
+├── scripts/                  # Installation scripts
+│   ├── load-images.sh       # Load images into Docker
+│   ├── push-images.sh       # Push images to internal registry
+│   └── install-collection.sh # Install Ansible collection
+├── images-manifest.yml       # Image manifest for verification
+├── sample-inventory.ini      # Sample Ansible inventory
+└── README.md                 # This file
+```
+
+## Installation Steps
+
+### 1. Transfer Bundle to Air-Gapped System
+
+Copy this archive to the target system using USB drive, secure file transfer, or other approved method.
+
+### 2. Extract the Bundle
+
+```bash
+tar -xzf {{ k8s_tutum_offline_archive_name }}*.tar.gz
+cd {{ k8s_tutum_offline_output_path | basename }}
+```
+
+### 3. Load Docker Images
+
+Load all images into the local Docker daemon:
+
+```bash
+./scripts/load-images.sh
+```
+
+{% if k8s_tutum_offline_internal_registry | length > 0 %}
+### 4. Push Images to Internal Registry
+
+If using an internal registry ({{ k8s_tutum_offline_internal_registry }}):
+
+```bash
+# Login to registry first if required
+docker login {{ k8s_tutum_offline_internal_registry }}
+
+# Push all images
+./scripts/push-images.sh
+```
+{% endif %}
+
+### {{ '5' if k8s_tutum_offline_internal_registry | length > 0 else '4' }}. Install Ansible Collection
+
+```bash
+./scripts/install-collection.sh
+```
+
+### {{ '6' if k8s_tutum_offline_internal_registry | length > 0 else '5' }}. Configure Inventory
+
+Copy and edit the sample inventory:
+
+```bash
+cp sample-inventory.ini my-inventory.ini
+# Edit my-inventory.ini with your configuration
+```
+
+### {{ '7' if k8s_tutum_offline_internal_registry | length > 0 else '6' }}. Run Installation
+
+```bash
+ansible-playbook {{ k8s_tutum_offline_collection_name | replace('.', '/') }}/playbooks/install-tutum-k8s.yml \
+  -i my-inventory.ini
+```
+
+Or if using the collection:
+
+```bash
+ansible-playbook -i my-inventory.ini \
+  ~/.ansible/collections/ansible_collections/{{ k8s_tutum_offline_collection_name | replace('.', '/') }}/playbooks/install-tutum-k8s.yml
+```
+
+## Component Versions
+
+| Component | Version |
+|-----------|---------|
+| Tutum Engine | {{ k8s_tutum_engine_version }} |
+{% if k8s_tutum_offline_db_mode == 'embedded' %}
+| PostgreSQL | {{ k8s_tutum_postgres_version }} |
+{% elif k8s_tutum_offline_db_mode == 'cnpg' %}
+| CNPG Operator | {{ k8s_tutum_cnpg_operator_version }} |
+| CNPG PostgreSQL | {{ k8s_tutum_cnpg_postgres_version }} |
+{% endif %}
+{% if k8s_tutum_offline_injection_mode == 'csi' %}
+| CSI Driver | {{ k8s_tutum_csi_version }} |
+| CSI Provisioner | {{ k8s_csi_provisioner_version }} |
+| CSI Node Registrar | {{ k8s_csi_node_driver_registrar_version }} |
+{% elif k8s_tutum_offline_injection_mode == 'operator' %}
+| Tutum Operator | {{ k8s_tutum_operator_version }} |
+{% endif %}
+| Ansible Collection | {{ k8s_tutum_offline_collection_name }}{% if k8s_tutum_offline_collection_version %}:{{ k8s_tutum_offline_collection_version }}{% endif %} |
+
+## Troubleshooting
+
+### Docker images won't load
+
+Ensure Docker is running and you have sufficient disk space:
+
+```bash
+docker info
+df -h
+```
+
+### Cannot push to internal registry
+
+1. Verify registry is accessible: `curl -k https://{{ k8s_tutum_offline_internal_registry | default('your-registry') }}/v2/`
+2. Login to registry: `docker login {{ k8s_tutum_offline_internal_registry | default('your-registry') }}`
+3. Check network connectivity
+
+### Ansible collection not found
+
+Verify the collection was installed:
+
+```bash
+ansible-galaxy collection list | grep {{ k8s_tutum_offline_collection_name }}
+```
+
+## Support
+
+For issues and support, contact your Tutum Platform administrator.

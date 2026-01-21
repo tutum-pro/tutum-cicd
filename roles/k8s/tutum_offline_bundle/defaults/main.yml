@@ -1,0 +1,114 @@
+---
+# k8s_tutum_offline_bundle role defaults
+# Prepare offline bundle for air-gapped/on-prem Tutum Platform installation
+
+# ==================== Output Configuration ====================
+
+# Output directory for the bundle
+k8s_tutum_offline_output_path: "./tutum-offline-bundle"
+
+# Archive name (without extension)
+k8s_tutum_offline_archive_name: "tutum-k8s-offline-bundle"
+
+# Include timestamp in archive name
+k8s_tutum_offline_archive_timestamp: true
+
+# Create output directory if not exists
+k8s_tutum_offline_create_dir: true
+
+# ==================== Configuration Source ====================
+
+# Path to inventory file (k8s.ini) to read configuration from
+# If empty, uses default configuration
+k8s_tutum_offline_inventory_path: ""
+
+# ==================== Component Selection ====================
+
+# Database mode: embedded, cnpg, external
+# Determines which database images to include
+k8s_tutum_offline_db_mode: "embedded"
+
+# Certificate injection mode: csi, operator
+k8s_tutum_offline_injection_mode: "operator"
+
+# Kubernetes distribution (affects CSI kubelet paths)
+k8s_distribution: "standard"
+
+# ==================== Internal Registry Configuration ====================
+
+# Internal registry address (for retagging images)
+# Example: "registry.internal.example.com:5000"
+k8s_tutum_offline_internal_registry: ""
+
+# Internal registry prefix/namespace
+# Example: "tutum" -> registry.internal.example.com:5000/tutum/image:tag
+k8s_tutum_offline_internal_prefix: "tutum"
+
+# Save retagged images (with internal registry prefix)
+k8s_tutum_offline_save_retagged: true
+
+# ==================== Component Versions ====================
+
+# Tutum Platform components
+k8s_tutum_engine_version: "5.1.5"
+k8s_tutum_csi_version: "4.0.1"
+k8s_tutum_operator_version: "0.1.11"
+
+# PostgreSQL (embedded mode)
+k8s_tutum_postgres_version: "15-alpine"
+
+# CNPG (cnpg mode)
+k8s_tutum_cnpg_operator_version: "1.25.0"
+k8s_tutum_cnpg_postgres_version: "16"
+
+# CSI sidecar versions
+k8s_csi_provisioner_version: "v3.6.0"
+k8s_csi_node_driver_registrar_version: "v2.9.0"
+
+# ==================== Image Registries ====================
+
+# Tutum Platform images
+k8s_tutum_engine_image: "tutumpro/tutum-engine"
+k8s_tutum_csi_image: "tutumpro/tutum-csi-driver-k8s"
+k8s_tutum_operator_image: "tutumpro/tutum-operator-k8s"
+
+# PostgreSQL images
+k8s_tutum_postgres_image: "postgres"
+k8s_tutum_cnpg_operator_image: "ghcr.io/cloudnative-pg/cloudnative-pg"
+k8s_tutum_cnpg_postgres_image: "ghcr.io/cloudnative-pg/postgresql"
+
+# CSI sidecar images
+k8s_csi_provisioner_image: "registry.k8s.io/sig-storage/csi-provisioner"
+k8s_csi_node_driver_registrar_image: "registry.k8s.io/sig-storage/csi-node-driver-registrar"
+
+# ==================== Ansible Collection ====================
+
+# Include Ansible collection in bundle
+k8s_tutum_offline_include_collection: true
+
+# Collection version (empty = latest)
+k8s_tutum_offline_collection_version: ""
+
+# Collection source
+# Options: galaxy, git, local
+k8s_tutum_offline_collection_source: "galaxy"
+
+# Collection name
+k8s_tutum_offline_collection_name: "tutum_pro.cicd"
+
+# Git repository URL (when source=git)
+k8s_tutum_offline_collection_git_url: "https://github.com/tutum-pro/tutum-cicd.git"
+
+# Local path to collection (when source=local)
+k8s_tutum_offline_collection_local_path: ""
+
+# ==================== Bundle Contents ====================
+
+# Include installation scripts
+k8s_tutum_offline_include_scripts: true
+
+# Include sample inventory
+k8s_tutum_offline_include_sample_inventory: true
+
+# Include README
+k8s_tutum_offline_include_readme: true

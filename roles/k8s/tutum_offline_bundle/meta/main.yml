@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  author: Tutum Team
+  description: Prepare offline bundle for air-gapped Tutum Platform installation
+  license: proprietary
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - kubernetes
+    - tutum
+    - offline
+    - airgap
+    - bundle
+    - docker
+    - images
+
+dependencies: []

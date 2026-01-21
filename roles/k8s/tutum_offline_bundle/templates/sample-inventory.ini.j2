@@ -9,11 +9,11 @@
 k8s_distribution={{ k8s_distribution | default('kubernetes') }}
 
 # ==================== Namespace ====================
-k8s_tutum_namespace=tutum
+k8s_tutum_namespace=tutum-system
 
 # ==================== Database Mode ====================
 # Options: embedded, cnpg, external
-k8s_tutum_db_mode={{ k8s_tutum_offline_db_mode }}
+k8s_tutum_init_db_mode={{ k8s_tutum_offline_db_mode }}
 
 {% if k8s_tutum_offline_db_mode == 'external' %}
 # External database connection
@@ -26,16 +26,7 @@ k8s_tutum_db_password=CHANGE_ME
 
 # ==================== Certificate Injection Mode ====================
 # Options: csi, operator
-k8s_tutum_injection_mode={{ k8s_tutum_offline_injection_mode }}
-
-# ==================== Image Registry ====================
-{% if k8s_tutum_offline_internal_registry | length > 0 %}
-# Internal registry (pre-configured for this bundle)
-k8s_tutum_image_registry={{ k8s_tutum_offline_internal_registry }}/{{ k8s_tutum_offline_internal_prefix }}
-{% else %}
-# Uncomment and configure for internal registry:
-# k8s_tutum_image_registry=registry.example.com/tutum
-{% endif %}
+k8s_tutum_init_injection_mode={{ k8s_tutum_offline_injection_mode }}
 
 # ==================== Component Versions ====================
 k8s_tutum_engine_version={{ k8s_tutum_engine_version }}
@@ -47,8 +38,58 @@ k8s_tutum_cnpg_postgres_version={{ k8s_tutum_cnpg_postgres_version }}
 {% endif %}
 {% if k8s_tutum_offline_injection_mode == 'csi' %}
 k8s_tutum_csi_version={{ k8s_tutum_csi_version }}
+k8s_csi_provisioner_version={{ k8s_csi_provisioner_version }}
+k8s_csi_node_driver_registrar_version={{ k8s_csi_node_driver_registrar_version }}
 {% elif k8s_tutum_offline_injection_mode == 'operator' %}
 k8s_tutum_operator_version={{ k8s_tutum_operator_version }}
+{% endif %}
+
+# ==================== Image Configuration ====================
+{% if k8s_tutum_offline_internal_registry | length > 0 %}
+{% set _registry_prefix = k8s_tutum_offline_internal_registry ~ '/' ~ k8s_tutum_offline_internal_prefix %}
+# Internal registry images (pre-configured for this bundle)
+# After running push-images.sh, these images will be available at:
+
+# Tutum Engine
+k8s_tutum_engine_image={{ _registry_prefix }}/tutum-engine
+
+{% if k8s_tutum_offline_db_mode == 'embedded' %}
+# PostgreSQL (embedded mode)
+k8s_tutum_postgres_image={{ _registry_prefix }}/postgres
+{% elif k8s_tutum_offline_db_mode == 'cnpg' %}
+# CloudNativePG (CNPG mode)
+k8s_tutum_cnpg_operator_image={{ _registry_prefix }}/cloudnative-pg
+k8s_tutum_cnpg_image={{ _registry_prefix }}/postgresql:{{ k8s_tutum_cnpg_postgres_version }}
+{% endif %}
+
+{% if k8s_tutum_offline_injection_mode == 'csi' %}
+# CSI Driver
+k8s_tutum_csi_image={{ _registry_prefix }}/tutum-csi-driver-k8s
+k8s_csi_provisioner_image={{ _registry_prefix }}/csi-provisioner
+k8s_csi_node_driver_registrar_image={{ _registry_prefix }}/csi-node-driver-registrar
+{% elif k8s_tutum_offline_injection_mode == 'operator' %}
+# Tutum Operator
+k8s_tutum_operator_image={{ _registry_prefix }}/tutum-operator-k8s
+{% endif %}
+
+{% else %}
+# ==================== Default Image Sources ====================
+# Uncomment and modify for internal registry usage:
+#
+# k8s_tutum_engine_image=your-registry.local/tutum/tutum-engine
+{% if k8s_tutum_offline_db_mode == 'embedded' %}
+# k8s_tutum_postgres_image=your-registry.local/tutum/postgres
+{% elif k8s_tutum_offline_db_mode == 'cnpg' %}
+# k8s_tutum_cnpg_operator_image=your-registry.local/tutum/cloudnative-pg
+# k8s_tutum_cnpg_image=your-registry.local/tutum/postgresql:{{ k8s_tutum_cnpg_postgres_version }}
+{% endif %}
+{% if k8s_tutum_offline_injection_mode == 'csi' %}
+# k8s_tutum_csi_image=your-registry.local/tutum/tutum-csi-driver-k8s
+# k8s_csi_provisioner_image=your-registry.local/tutum/csi-provisioner
+# k8s_csi_node_driver_registrar_image=your-registry.local/tutum/csi-node-driver-registrar
+{% elif k8s_tutum_offline_injection_mode == 'operator' %}
+# k8s_tutum_operator_image=your-registry.local/tutum/tutum-operator-k8s
+{% endif %}
 {% endif %}
 
 # ==================== Ingress Configuration ====================
@@ -70,3 +111,7 @@ k8s_tutum_operator_version={{ k8s_tutum_operator_version }}
 # k8s_tutum_rest_base_path=/api
 # k8s_tutum_engine_http_port=8080
 # k8s_tutum_engine_grpc_port=9090
+
+# ==================== Security (change these!) ====================
+# k8s_tutum_master_key=  # Leave empty to auto-generate
+# k8s_tutum_jwt_secret=  # Leave empty to auto-generate

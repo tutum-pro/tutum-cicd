@@ -1,0 +1,29 @@
+---
+galaxy_info:
+  author: Tutum Pro
+  description: Generate TutumCertificate CR manifest for Kubernetes
+  license: proprietary
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - kubernetes
+    - certificates
+    - tutum
+    - security
+
+dependencies: []

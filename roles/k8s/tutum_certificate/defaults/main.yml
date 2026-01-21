@@ -1,0 +1,80 @@
+---
+# k8s_tutum_certificate role defaults
+# Generate TutumCertificate CR manifest
+
+# ==================== Required Parameters ====================
+
+# Certificate name in Tutum Engine
+k8s_tutum_cert_name: ""
+
+# Kubernetes Secret name to create
+k8s_tutum_cert_secret_name: ""
+
+# ==================== Mode Configuration ====================
+
+# Tree mode: true = fetch all certificates in tree structure, false = single certificate
+# When treeMode=true: groupId and certNamespace must be empty
+# When treeMode=false: groupId and certNamespace are required
+k8s_tutum_cert_tree_mode: true
+
+# Group ID in Tutum Engine (required when treeMode=false)
+k8s_tutum_cert_group_id: ""
+
+# Namespace in Tutum Engine (required when treeMode=false)
+k8s_tutum_cert_namespace: ""
+
+# ==================== Deployment Configuration ====================
+
+# Kubernetes namespace for TutumCertificate CR
+k8s_tutum_cert_deploy_namespace: "default"
+
+# ==================== Certificate Options ====================
+
+# Certificate version (0 = latest)
+k8s_tutum_cert_version: 0
+
+# Refresh interval for certificate sync
+k8s_tutum_cert_refresh_interval: "5m"
+
+# Distribution channel
+k8s_tutum_cert_channel: "default"
+
+# Auth token for non-default channels
+k8s_tutum_cert_auth_token: ""
+
+# ==================== Secret Configuration ====================
+
+# Secret type: kubernetes.io/tls or Opaque
+# NOTE: When treeMode=true, must use Opaque
+k8s_tutum_cert_secret_type: "Opaque"
+
+# Include CA certificate in secret
+k8s_tutum_cert_include_ca: true
+
+# Override Tutum Engine URL (empty = use operator default)
+k8s_tutum_cert_engine_url: ""
+
+# Additional labels for the Secret
+k8s_tutum_cert_secret_labels: {}
+
+# Additional annotations for the Secret
+k8s_tutum_cert_secret_annotations: {}
+
+# ==================== Output Configuration ====================
+
+# Output path for generated manifest
+k8s_tutum_cert_output_path: "."
+
+# Output filename (if empty, uses: {prefix}-{cert_name}.yml)
+k8s_tutum_cert_output_file: ""
+
+# Output filename prefix (used when k8s_tutum_cert_output_file is empty)
+k8s_tutum_cert_output_prefix: "tutumcertificate"
+
+# Apply manifest to cluster (true) or just generate file (false)
+k8s_tutum_cert_apply: false
+
+# ==================== State ====================
+
+# Action: present or absent
+k8s_tutum_cert_state: "present"

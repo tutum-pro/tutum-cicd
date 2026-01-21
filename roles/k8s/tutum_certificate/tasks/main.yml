@@ -1,0 +1,112 @@
+---
+# k8s_tutum_certificate - Generate TutumCertificate manifest
+
+# ==================== Validation ====================
+
+- name: Validate required parameters
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_cert_name | length > 0
+      - k8s_tutum_cert_secret_name | length > 0
+    fail_msg: "k8s_tutum_cert_name and k8s_tutum_cert_secret_name are required"
+
+- name: Validate certificate name for filesystem compatibility
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_cert_name is regex('^[a-zA-Z0-9][a-zA-Z0-9._-]*$')
+      - k8s_tutum_cert_name | length <= 253
+    fail_msg: >-
+      Certificate name must be a valid filename: start with alphanumeric,
+      contain only alphanumeric, dots, underscores, hyphens, max 253 chars
+
+- name: Validate single mode parameters
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_cert_group_id | length > 0
+      - k8s_tutum_cert_namespace | length > 0
+    fail_msg: "groupId and certNamespace are required when treeMode=false"
+  when: not k8s_tutum_cert_tree_mode | bool
+
+- name: Validate tree mode configuration
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_cert_secret_type == "Opaque"
+    fail_msg: "secretType must be 'Opaque' when treeMode=true"
+  when: k8s_tutum_cert_tree_mode | bool
+
+# ==================== Set Output Filename ====================
+
+- name: Validate custom output filename
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_cert_output_file is regex('^[a-zA-Z0-9][a-zA-Z0-9._-]*$')
+    fail_msg: >-
+      Output filename must be a valid filename: start with alphanumeric,
+      contain only alphanumeric, dots, underscores, hyphens
+  when: k8s_tutum_cert_output_file | default('') | length > 0
+
+- name: Set output filename
+  ansible.builtin.set_fact:
+    _k8s_tutum_cert_output_file: "{{ k8s_tutum_cert_output_file if (k8s_tutum_cert_output_file | default('') | length > 0) else (k8s_tutum_cert_output_prefix ~ '-' ~ k8s_tutum_cert_name ~ '.yml') }}"
+
+# ==================== Generate Manifest ====================
+
+- name: Display configuration
+  ansible.builtin.debug:
+    msg:
+      - "Certificate: {{ k8s_tutum_cert_name }}"
+      - "Secret: {{ k8s_tutum_cert_secret_name }}"
+      - "Namespace: {{ k8s_tutum_cert_deploy_namespace }}"
+      - "Tree mode: {{ k8s_tutum_cert_tree_mode }}"
+      - "Output: {{ k8s_tutum_cert_output_path }}/{{ _k8s_tutum_cert_output_file }}"
+
+- name: Ensure output directory exists
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_cert_output_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Generate TutumCertificate manifest
+  ansible.builtin.template:
+    src: tutumcertificate.yml.j2
+    dest: "{{ k8s_tutum_cert_output_path }}/{{ _k8s_tutum_cert_output_file }}"
+    mode: '0644'
+  when: k8s_tutum_cert_state == "present"
+
+# ==================== Apply to Cluster (optional) ====================
+
+- name: Apply TutumCertificate to cluster
+  ansible.builtin.command: kubectl apply -f {{ k8s_tutum_cert_output_path }}/{{ _k8s_tutum_cert_output_file }}
+  when:
+    - k8s_tutum_cert_apply | bool
+    - k8s_tutum_cert_state == "present"
+  changed_when: true
+
+- name: Delete TutumCertificate from cluster
+  ansible.builtin.command: >
+    kubectl delete tutumcertificate {{ k8s_tutum_cert_name }}
+    -n {{ k8s_tutum_cert_deploy_namespace }} --ignore-not-found
+  when:
+    - k8s_tutum_cert_apply | bool
+    - k8s_tutum_cert_state == "absent"
+  changed_when: true
+
+# ==================== Summary ====================
+
+- name: Display generated manifest info
+  ansible.builtin.debug:
+    msg:
+      - "=========================================="
+      - "  TutumCertificate Manifest Generated"
+      - "=========================================="
+      - ""
+      - "File: {{ k8s_tutum_cert_output_path }}/{{ _k8s_tutum_cert_output_file }}"
+      - ""
+      - "To apply manually:"
+      - "  kubectl apply -f {{ k8s_tutum_cert_output_path }}/{{ _k8s_tutum_cert_output_file }}"
+      - ""
+      - "To verify:"
+      - "  kubectl get tutumcertificate {{ k8s_tutum_cert_name }} -n {{ k8s_tutum_cert_deploy_namespace }}"
+  when:
+    - k8s_tutum_cert_state == "present"
+    - not k8s_tutum_cert_apply | bool

@@ -1,0 +1,307 @@
+---
+# k8s_tutum_manifests - Main tasks
+# Generate all Kubernetes manifests for Tutum Platform
+
+# ==================== Validation ====================
+
+- name: Validate configuration
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_manifests_db_mode in ['embedded', 'cnpg', 'external']
+      - k8s_tutum_manifests_injection_mode in ['csi', 'operator']
+      - k8s_distribution in ['standard', 'microk8s', 'k3s', 'rke2', 'openshift']
+    fail_msg: |
+      Invalid configuration:
+      - db_mode must be: embedded, cnpg, or external (got: {{ k8s_tutum_manifests_db_mode }})
+      - injection_mode must be: csi or operator (got: {{ k8s_tutum_manifests_injection_mode }})
+      - distribution must be: standard, microk8s, k3s, rke2, or openshift (got: {{ k8s_distribution }})
+
+- name: Validate external database configuration
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_postgres_host | length > 0 or k8s_tutum_external_db_url | length > 0
+    fail_msg: "For external database mode, either k8s_tutum_postgres_host or k8s_tutum_external_db_url must be set"
+  when: k8s_tutum_manifests_db_mode == 'external'
+
+- name: Validate security keys length
+  ansible.builtin.assert:
+    that:
+      - k8s_tutum_master_key | length == 32
+      - k8s_tutum_jwt_secret | length == 32
+    fail_msg: |
+      Security keys must be exactly 32 characters:
+      - k8s_tutum_master_key length: {{ k8s_tutum_master_key | length }}
+      - k8s_tutum_jwt_secret length: {{ k8s_tutum_jwt_secret | length }}
+
+# ==================== Create Output Directory ====================
+
+- name: Create output directory
+  ansible.builtin.file:
+    path: "{{ k8s_tutum_manifests_output_path }}"
+    state: directory
+    mode: '0755'
+  when: k8s_tutum_manifests_create_dir | bool
+
+- name: Check if output directory exists
+  ansible.builtin.stat:
+    path: "{{ k8s_tutum_manifests_output_path }}"
+  register: _output_dir
+
+- name: Fail if output directory does not exist
+  ansible.builtin.fail:
+    msg: "Output directory {{ k8s_tutum_manifests_output_path }} does not exist. Set k8s_tutum_manifests_create_dir=true to create it."
+  when: not _output_dir.stat.exists
+
+# ==================== Set Computed Variables ====================
+
+- name: Set PostgreSQL host based on db_mode
+  ansible.builtin.set_fact:
+    _k8s_tutum_postgres_host: >-
+      {% if k8s_tutum_manifests_db_mode == 'cnpg' %}
+      {{ k8s_tutum_cnpg_cluster_name }}-rw.{{ k8s_tutum_cnpg_namespace }}.svc.cluster.local
+      {% elif k8s_tutum_manifests_db_mode == 'embedded' %}
+      tutum-postgres.{{ k8s_tutum_namespace }}.svc.cluster.local
+      {% else %}
+      {{ k8s_tutum_postgres_host }}
+      {% endif %}
+
+# ==================== Generate Base Manifests ====================
+
+- name: Generate namespace manifest
+  ansible.builtin.template:
+    src: namespace.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/00-namespace.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+# ==================== Generate Database Manifests ====================
+
+- name: Generate embedded PostgreSQL manifests
+  when: k8s_tutum_manifests_db_mode == 'embedded'
+  block:
+    - name: Generate PostgreSQL secret
+      ansible.builtin.template:
+        src: postgres/secret.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/10-postgres-secret.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate PostgreSQL PVC
+      ansible.builtin.template:
+        src: postgres/pvc.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/11-postgres-pvc.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate PostgreSQL deployment
+      ansible.builtin.template:
+        src: postgres/deployment.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/12-postgres-deployment.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate PostgreSQL service
+      ansible.builtin.template:
+        src: postgres/service.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/13-postgres-service.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+- name: Generate CNPG manifests
+  when: k8s_tutum_manifests_db_mode == 'cnpg'
+  block:
+    - name: Generate CNPG namespace
+      ansible.builtin.template:
+        src: cnpg/namespace.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/10-cnpg-namespace.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CNPG cluster credentials
+      ansible.builtin.template:
+        src: cnpg/secret.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/11-cnpg-secret.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CNPG cluster
+      ansible.builtin.template:
+        src: cnpg/cluster.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/12-cnpg-cluster.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CNPG pooler
+      ansible.builtin.template:
+        src: cnpg/pooler.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/13-cnpg-pooler.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+      when: k8s_tutum_cnpg_enable_pooler | bool
+
+# ==================== Generate Tutum Engine Manifests ====================
+
+- name: Generate Tutum Engine configmap
+  ansible.builtin.template:
+    src: engine/configmap.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/20-engine-configmap.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+- name: Generate Tutum Engine secret
+  ansible.builtin.template:
+    src: engine/secret.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/21-engine-secret.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+- name: Generate Tutum Engine RBAC
+  ansible.builtin.template:
+    src: engine/rbac.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/22-engine-rbac.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+- name: Generate Tutum Engine deployment
+  ansible.builtin.template:
+    src: engine/deployment.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/23-engine-deployment.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+- name: Generate Tutum Engine service
+  ansible.builtin.template:
+    src: engine/service.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/24-engine-service.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+# ==================== Generate Ingress/Route ====================
+
+- name: Generate Ingress manifest
+  ansible.builtin.template:
+    src: engine/ingress.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/25-engine-ingress.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+  when:
+    - k8s_tutum_manifests_ingress_enabled | bool
+
+- name: Generate Route manifest (OpenShift)
+  ansible.builtin.template:
+    src: engine/route.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/26-engine-route.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+  when:
+    - k8s_tutum_manifests_ingress_enabled | bool
+    - k8s_distribution == 'openshift'
+
+# ==================== Generate CSI Driver Manifests ====================
+
+- name: Generate CSI driver manifests
+  when: k8s_tutum_manifests_injection_mode == 'csi'
+  block:
+    - name: Generate CSI RBAC
+      ansible.builtin.template:
+        src: csi/rbac.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/30-csi-rbac.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CSIDriver resource
+      ansible.builtin.template:
+        src: csi/csidriver.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/31-csi-driver.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CSI controller
+      ansible.builtin.template:
+        src: csi/controller.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/32-csi-controller.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CSI daemonset
+      ansible.builtin.template:
+        src: csi/daemonset.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/33-csi-daemonset.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate CSI storageclass
+      ansible.builtin.template:
+        src: csi/storageclass.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/34-csi-storageclass.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+# ==================== Generate Operator Manifests ====================
+
+- name: Generate Operator manifests
+  when: k8s_tutum_manifests_injection_mode == 'operator'
+  block:
+    - name: Generate Operator CRD
+      ansible.builtin.template:
+        src: operator/crd.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/30-operator-crd.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate Operator RBAC
+      ansible.builtin.template:
+        src: operator/rbac.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/31-operator-rbac.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+    - name: Generate Operator deployment
+      ansible.builtin.template:
+        src: operator/deployment.yml.j2
+        dest: "{{ k8s_tutum_manifests_output_path }}/32-operator-deployment.yml"
+        mode: '0644'
+        force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+# ==================== Generate Kustomization (optional) ====================
+
+- name: Generate kustomization.yaml
+  ansible.builtin.template:
+    src: kustomization.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/kustomization.yaml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
+# ==================== Summary ====================
+
+- name: Display generated manifests summary
+  ansible.builtin.debug:
+    msg:
+      - "Tutum Platform manifests generated successfully!"
+      - ""
+      - "Output directory: {{ k8s_tutum_manifests_output_path }}"
+      - ""
+      - "Configuration:"
+      - "  - Database mode: {{ k8s_tutum_manifests_db_mode }}"
+      - "  - Injection mode: {{ k8s_tutum_manifests_injection_mode }}"
+      - "  - Distribution: {{ k8s_distribution }}"
+      - "  - Namespace: {{ k8s_tutum_namespace }}"
+      - "  - Ingress enabled: {{ k8s_tutum_manifests_ingress_enabled }}"
+      - ""
+      - "Generated files:"
+      - "  - 00-namespace.yml"
+      - "{% if k8s_tutum_manifests_db_mode == 'embedded' %}  - 10-13: PostgreSQL manifests{% endif %}"
+      - "{% if k8s_tutum_manifests_db_mode == 'cnpg' %}  - 10-13: CNPG manifests{% endif %}"
+      - "  - 20-25: Tutum Engine manifests"
+      - "{% if k8s_tutum_manifests_injection_mode == 'csi' %}  - 30-34: CSI driver manifests{% endif %}"
+      - "{% if k8s_tutum_manifests_injection_mode == 'operator' %}  - 30-32: Operator manifests{% endif %}"
+      - "  - kustomization.yaml"
+      - ""
+      - "To apply all manifests:"
+      - "  kubectl apply -k {{ k8s_tutum_manifests_output_path }}"
+      - ""
+      - "Or apply individually in order:"
+      - "  kubectl apply -f {{ k8s_tutum_manifests_output_path }}/00-namespace.yml"
+      - "  kubectl apply -f {{ k8s_tutum_manifests_output_path }}/1*.yml"
+      - "  kubectl apply -f {{ k8s_tutum_manifests_output_path }}/2*.yml"
+      - "  kubectl apply -f {{ k8s_tutum_manifests_output_path }}/3*.yml"

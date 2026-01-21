@@ -1,0 +1,32 @@
+---
+# Tutum Platform - Generate Kubernetes Manifests
+#
+# This playbook generates static YAML manifests for Tutum Platform deployment.
+# Manifests are written to a specified directory for manual review, GitOps, or custom pipelines.
+#
+# Basic usage:
+#   ansible-playbook playbooks/generate-k8s-manifests.yml \
+#     -e k8s_tutum_manifests_output_path=./manifests
+#
+# With CNPG and operator:
+#   ansible-playbook playbooks/generate-k8s-manifests.yml \
+#     -e k8s_tutum_manifests_output_path=./manifests \
+#     -e k8s_tutum_manifests_db_mode=cnpg \
+#     -e k8s_tutum_manifests_injection_mode=operator
+#
+# For OpenShift:
+#   ansible-playbook playbooks/generate-k8s-manifests.yml \
+#     -e k8s_tutum_manifests_output_path=./manifests \
+#     -e k8s_distribution=openshift \
+#     -e k8s_tutum_manifests_ingress_enabled=true
+#
+# Apply generated manifests:
+#   kubectl apply -k ./manifests
+
+- name: Generate Tutum Platform Kubernetes manifests
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    - role: tutum_pro.cicd.k8s.tutum_manifests

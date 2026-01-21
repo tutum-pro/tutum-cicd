@@ -1,0 +1,248 @@
+---
+# k8s_tutum_manifests role defaults
+# Generate all Kubernetes manifests for Tutum Platform deployment
+
+# ==================== Output Configuration ====================
+
+# Output directory for generated manifests
+k8s_tutum_manifests_output_path: "./manifests"
+
+# Create output directory if not exists
+k8s_tutum_manifests_create_dir: true
+
+# Overwrite existing files
+k8s_tutum_manifests_overwrite: false
+
+# ==================== Component Selection ====================
+
+# Database mode: embedded, cnpg, external
+# embedded: Simple PostgreSQL deployment
+# cnpg: CloudNativePG cluster (production-ready)
+# external: Use external PostgreSQL (no database manifests generated)
+k8s_tutum_manifests_db_mode: "embedded"
+
+# Certificate injection mode: csi, operator
+# csi: CSI driver (requires privileged containers)
+# operator: Kubernetes operator (rootless)
+k8s_tutum_manifests_injection_mode: "operator"
+
+# Generate Ingress/Route manifests
+k8s_tutum_manifests_ingress_enabled: false
+
+# ==================== Namespace ====================
+
+k8s_tutum_namespace: "tutum-system"
+
+# CNPG cluster namespace (only for db_mode=cnpg)
+k8s_tutum_cnpg_namespace: "pgdb"
+
+# ==================== Kubernetes Distribution ====================
+
+# Options: standard, microk8s, k3s, rke2, openshift
+k8s_distribution: "standard"
+
+# ==================== Component Versions ====================
+
+k8s_tutum_engine_version: "5.1.5"
+k8s_tutum_csi_version: "4.0.1"
+k8s_tutum_operator_version: "0.1.11"
+k8s_tutum_postgres_version: "15-alpine"
+k8s_tutum_cnpg_operator_version: "1.25.0"
+k8s_tutum_cnpg_postgres_version: "16"
+
+# ==================== Tutum Engine Configuration ====================
+
+k8s_tutum_engine_image: "tutumpro/tutum-engine"
+k8s_tutum_engine_image_pull_policy: "Always"
+k8s_tutum_engine_replicas: 1
+
+k8s_tutum_engine_resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+k8s_tutum_engine_http_port: 8080
+k8s_tutum_engine_grpc_port: 9090
+k8s_tutum_engine_metrics_port: 9091
+
+# REST API base path (for multi-instance deployments)
+k8s_tutum_rest_base_path: ""
+
+# Logging and features
+k8s_tutum_log_level: "info"
+k8s_tutum_enable_metrics: "true"
+k8s_tutum_create_not_existing_obj: "true"
+k8s_tutum_pod_restart_enabled: "true"
+
+# Webhook (for operator integration)
+k8s_tutum_webhook_enabled: "true"
+k8s_tutum_webhook_endpoints: "http://tutum-operator-webhook.{{ k8s_tutum_namespace }}.svc:8082/webhook/certificate-change"
+
+# ==================== Database Configuration ====================
+
+k8s_tutum_db_name: "tutum"
+k8s_tutum_db_user: "tutum"
+k8s_tutum_db_password: "tutum"  # Override in production!
+k8s_tutum_db_port: "5432"
+
+# External database (only for db_mode=external)
+k8s_tutum_postgres_host: ""
+k8s_tutum_postgres_port: "5432"
+k8s_tutum_postgres_sslmode: "disable"
+k8s_tutum_external_db_url: ""
+
+# ==================== Security Keys ====================
+# IMPORTANT: Override these in production!
+# Keys must be exactly 32 characters for AES-256 encryption
+
+k8s_tutum_master_key: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+k8s_tutum_jwt_secret: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+
+# ==================== Embedded PostgreSQL (db_mode=embedded) ====================
+
+k8s_tutum_postgres_image: "postgres"
+k8s_tutum_postgres_image_pull_policy: "IfNotPresent"
+k8s_tutum_postgres_replicas: 1
+k8s_tutum_postgres_storage_class: ""
+k8s_tutum_postgres_storage_size: "5Gi"
+k8s_tutum_postgres_service_type: "ClusterIP"
+
+k8s_tutum_postgres_resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# ==================== CNPG Configuration (db_mode=cnpg) ====================
+
+k8s_tutum_cnpg_cluster_name: "tutum-postgres"
+k8s_tutum_cnpg_instances: 1
+k8s_tutum_cnpg_image: ""
+k8s_tutum_cnpg_image_pull_policy: "IfNotPresent"
+k8s_tutum_cnpg_storage_class: ""
+k8s_tutum_cnpg_storage_size: "5Gi"
+k8s_tutum_cnpg_db_name: "tutum"
+k8s_tutum_cnpg_db_user: "tutum"
+k8s_tutum_cnpg_db_password: ""  # Empty = auto-generate
+k8s_tutum_cnpg_superuser_password: ""
+
+k8s_tutum_cnpg_resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+k8s_tutum_cnpg_postgres_parameters:
+  shared_buffers: "256MB"
+  max_connections: "100"
+  log_statement: "ddl"
+
+k8s_tutum_cnpg_pg_hba: []
+k8s_tutum_cnpg_enable_monitoring: false
+k8s_tutum_cnpg_enable_pooler: false
+k8s_tutum_cnpg_pooler_instances: 1
+k8s_tutum_cnpg_pooler_mode: "transaction"
+
+# ==================== CSI Driver Configuration (injection_mode=csi) ====================
+
+k8s_tutum_csi_image: "tutumpro/tutum-csi-driver-k8s"
+k8s_csi_provisioner_version: "v3.6.0"
+k8s_csi_node_driver_registrar_version: "v2.9.0"
+k8s_csi_provisioner_image: "registry.k8s.io/sig-storage/csi-provisioner"
+k8s_csi_node_driver_registrar_image: "registry.k8s.io/sig-storage/csi-node-driver-registrar"
+
+k8s_tutum_csi_driver_name: "csi.tutum.io"
+k8s_tutum_csi_storage_class_name: "tutum-csi"
+k8s_tutum_csi_volume_binding_mode: "Immediate"
+k8s_tutum_csi_reclaim_policy: "Delete"
+
+k8s_tutum_csi_controller_resources:
+  provisioner:
+    requests:
+      cpu: "10m"
+      memory: "64Mi"
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+  driver:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+k8s_tutum_csi_node_resources:
+  registrar:
+    requests:
+      cpu: "10m"
+      memory: "64Mi"
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+  driver:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# ==================== Operator Configuration (injection_mode=operator) ====================
+
+k8s_tutum_operator_image: "tutumpro/tutum-operator-k8s"
+k8s_tutum_operator_sync_interval: "5m"
+k8s_tutum_operator_log_level: "info"
+k8s_tutum_operator_watch_namespaces: ""
+
+k8s_tutum_operator_resources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+# ==================== Ingress Configuration ====================
+
+k8s_tutum_engine_ingress_class_name: "nginx"
+k8s_tutum_engine_ingress_host: ""
+k8s_tutum_engine_ingress_path: "/api"
+k8s_tutum_engine_ingress_path_type: "Prefix"
+k8s_tutum_engine_ingress_tls_enabled: false
+k8s_tutum_engine_ingress_tls_secret_name: ""
+k8s_tutum_engine_ingress_grpc_enabled: false
+k8s_tutum_engine_ingress_grpc_host: ""
+k8s_tutum_engine_ingress_annotations:
+  nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+# ==================== OpenShift Route Configuration ====================
+
+k8s_tutum_engine_route_host: ""
+k8s_tutum_engine_route_path: "/api"
+k8s_tutum_engine_route_termination: "edge"
+k8s_tutum_engine_route_insecure_edge_termination_policy: "Redirect"
+k8s_tutum_engine_route_tls_certificate: ""
+k8s_tutum_engine_route_tls_key: ""
+k8s_tutum_engine_route_tls_ca_certificate: ""
+
+# ==================== Internal Variables ====================
+
+# Kubelet paths per distribution
+_k8s_kubelet_paths:
+  standard: "/var/lib/kubelet"
+  microk8s: "/var/snap/microk8s/common/var/lib/kubelet"
+  k3s: "/var/lib/rancher/k3s/agent"
+  rke2: "/var/lib/rancher/rke2/agent"
+  openshift: "/var/lib/kubelet"
+
+# Tutum Engine URL for CSI/Operator
+k8s_tutum_engine_url: "tutum-engine.{{ k8s_tutum_namespace }}.svc.cluster.local:9090"

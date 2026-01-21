@@ -102,7 +102,7 @@ spec:
                   name: tutum-engine-secret
                   key: TUTUM_JWT_SECRET
             - name: DATABASE_URL
-              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode={{ k8s_tutum_postgres_sslmode }}"
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode={{ k8s_tutum_postgres_sslmode if k8s_tutum_manifests_db_mode == 'external' else ('require' if k8s_tutum_manifests_db_mode == 'cnpg' else 'disable') }}"
             - name: CREATE_NOT_EXISTING_OBJ
               valueFrom:
                 configMapKeyRef:

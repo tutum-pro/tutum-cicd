@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: tutum_manifests
+  author: Tutum Platform Team
+  description: Generate Kubernetes manifests for Tutum Platform deployment
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bookworm
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - kubernetes
+    - tutum
+    - pki
+    - certificates
+    - manifests
+
+dependencies: []

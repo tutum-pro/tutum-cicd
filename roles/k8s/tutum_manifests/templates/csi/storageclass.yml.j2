@@ -1,0 +1,16 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ k8s_tutum_csi_storage_class_name }}
+  labels:
+    app.kubernetes.io/name: tutum-csi-driver
+    app.kubernetes.io/managed-by: ansible
+provisioner: {{ k8s_tutum_csi_driver_name }}
+parameters:
+  engineUrl: "{{ k8s_tutum_engine_url }}"
+volumeBindingMode: {{ k8s_tutum_csi_volume_binding_mode }}
+reclaimPolicy: {{ k8s_tutum_csi_reclaim_policy }}
+allowVolumeExpansion: false
+mountOptions:
+  - ro

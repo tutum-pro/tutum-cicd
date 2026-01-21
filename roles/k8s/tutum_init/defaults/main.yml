@@ -84,11 +84,22 @@ k8s_tutum_operator_watch_namespaces: ""
 # K8s namespace where tutum_test_operator will deploy test app and TutumCertificate CR
 k8s_tutum_test_deploy_namespace: "tutum-system"
 
+# REST API base path (for multi-instance deployments)
+# This value is used consistently for both Tutum Engine service and Ingress
+# Example: "/api" or "/tutum/api" or "/instance1/api"
+k8s_tutum_rest_base_path: ""
+
 # Ingress configuration
 k8s_tutum_init_ingress_enabled: false
 k8s_tutum_init_ingress_class_name: "nginx"
 k8s_tutum_init_ingress_host: ""
+# Note: k8s_tutum_init_ingress_path is derived from k8s_tutum_rest_base_path if set
 k8s_tutum_init_ingress_path: "/api"
 k8s_tutum_init_ingress_tls_enabled: false
 k8s_tutum_init_ingress_tls_secret_name: ""
 k8s_tutum_init_ingress_cert_manager_issuer: ""
+
+# OpenShift Route configuration (only for k8s_tutum_init_distribution=openshift)
+# When distribution is "openshift", Route is used instead of Ingress
+k8s_tutum_init_route_termination: "edge"  # edge, passthrough, reencrypt
+k8s_tutum_init_route_insecure_edge_termination_policy: "Redirect"  # Allow, Redirect, None

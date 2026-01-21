@@ -1,0 +1,52 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: {{ k8s_tutum_namespace }}
+
+resources:
+  - 00-namespace.yml
+{% if k8s_tutum_manifests_db_mode == 'embedded' %}
+  # Embedded PostgreSQL
+  - 10-postgres-secret.yml
+  - 11-postgres-pvc.yml
+  - 12-postgres-deployment.yml
+  - 13-postgres-service.yml
+{% elif k8s_tutum_manifests_db_mode == 'cnpg' %}
+  # CloudNativePG
+  - 10-cnpg-namespace.yml
+  - 11-cnpg-secret.yml
+  - 12-cnpg-cluster.yml
+{% if k8s_tutum_cnpg_enable_pooler | bool %}
+  - 13-cnpg-pooler.yml
+{% endif %}
+{% endif %}
+  # Tutum Engine
+  - 20-engine-configmap.yml
+  - 21-engine-secret.yml
+  - 22-engine-rbac.yml
+  - 23-engine-deployment.yml
+  - 24-engine-service.yml
+{% if k8s_tutum_manifests_ingress_enabled | bool %}
+  - 25-engine-ingress.yml
+{% if k8s_distribution == 'openshift' %}
+  - 26-engine-route.yml
+{% endif %}
+{% endif %}
+{% if k8s_tutum_manifests_injection_mode == 'csi' %}
+  # CSI Driver
+  - 30-csi-rbac.yml
+  - 31-csi-driver.yml
+  - 32-csi-controller.yml
+  - 33-csi-daemonset.yml
+  - 34-csi-storageclass.yml
+{% elif k8s_tutum_manifests_injection_mode == 'operator' %}
+  # Operator
+  - 30-operator-crd.yml
+  - 31-operator-rbac.yml
+  - 32-operator-deployment.yml
+{% endif %}
+
+commonLabels:
+  app.kubernetes.io/part-of: tutum
+  app.kubernetes.io/managed-by: kustomize

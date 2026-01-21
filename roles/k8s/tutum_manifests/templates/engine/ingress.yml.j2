@@ -8,27 +8,41 @@ metadata:
     app.kubernetes.io/name: tutum-engine
     app.kubernetes.io/component: backend
     app.kubernetes.io/managed-by: ansible
-{% if k8s_tutum_engine_ingress_annotations %}
   annotations:
+{% if k8s_distribution == 'openshift' %}
+    # OpenShift HAProxy annotations (complementary to Route)
+    route.openshift.io/termination: "{{ k8s_tutum_engine_route_termination | default('edge') }}"
+{% if k8s_tutum_engine_route_termination | default('edge') != 'passthrough' %}
+    haproxy.router.openshift.io/hsts_header: "max-age=31536000;includeSubDomains;preload"
+{% endif %}
+{% if k8s_tutum_engine_route_insecure_edge_termination_policy | default('Redirect') == 'Redirect' %}
+    haproxy.router.openshift.io/ssl-redirect: "true"
+{% endif %}
+{% endif %}
+{% if k8s_tutum_engine_ingress_annotations %}
 {% for key, value in k8s_tutum_engine_ingress_annotations.items() %}
     {{ key }}: "{{ value }}"
 {% endfor %}
 {% endif %}
 spec:
-{% if k8s_tutum_engine_ingress_class_name %}
+{% if k8s_distribution == 'openshift' %}
+  ingressClassName: openshift-default
+{% elif k8s_tutum_engine_ingress_class_name %}
   ingressClassName: {{ k8s_tutum_engine_ingress_class_name }}
 {% endif %}
-{% if k8s_tutum_engine_ingress_tls_enabled and k8s_tutum_engine_ingress_host %}
+{% set _tls_host = k8s_tutum_engine_ingress_host | default('') or (k8s_tutum_engine_route_host | default('') if k8s_distribution == 'openshift' else '') %}
+{% if (k8s_tutum_engine_ingress_tls_enabled | default(false) | bool or k8s_distribution == 'openshift') and _tls_host %}
   tls:
     - hosts:
-        - {{ k8s_tutum_engine_ingress_host }}
+        - {{ _tls_host }}
 {% if k8s_tutum_engine_ingress_tls_secret_name %}
       secretName: {{ k8s_tutum_engine_ingress_tls_secret_name }}
 {% endif %}
 {% endif %}
   rules:
-{% if k8s_tutum_engine_ingress_host %}
-    - host: {{ k8s_tutum_engine_ingress_host }}
+{% set _ingress_host = k8s_tutum_engine_ingress_host | default('') or (k8s_tutum_engine_route_host | default('') if k8s_distribution == 'openshift' else '') %}
+{% if _ingress_host %}
+    - host: {{ _ingress_host }}
       http:
 {% else %}
     - http:
@@ -85,7 +99,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: tutum-engine-grpc
+                name: tutum-engine
                 port:
                   number: {{ k8s_tutum_engine_grpc_port }}
 {% endif %}

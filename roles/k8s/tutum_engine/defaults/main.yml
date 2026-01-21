@@ -46,6 +46,16 @@ k8s_tutum_engine_ingress_annotations:
 # For cert-manager, add:
 #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
 
+# OpenShift Route configuration (only for k8s_distribution=openshift)
+k8s_tutum_engine_route_enabled: false
+k8s_tutum_engine_route_host: ""  # e.g., "tutum.apps.example.com" (empty = auto-generated)
+k8s_tutum_engine_route_path: "/api"
+k8s_tutum_engine_route_termination: "edge"  # edge, passthrough, reencrypt
+k8s_tutum_engine_route_insecure_edge_termination_policy: "Redirect"  # Allow, Redirect, None
+k8s_tutum_engine_route_tls_certificate: ""  # Custom certificate (optional)
+k8s_tutum_engine_route_tls_key: ""  # Custom key (optional)
+k8s_tutum_engine_route_tls_ca_certificate: ""  # Custom CA (optional)
+
 # PostgreSQL connection
 # If k8s_tutum_external_db_url is set, external PostgreSQL will be used
 # and tutum_postgres role should be skipped
@@ -74,6 +84,12 @@ k8s_tutum_log_level: "info"
 k8s_tutum_enable_metrics: "true"
 k8s_tutum_create_not_existing_obj: "true"
 k8s_tutum_pod_restart_enabled: "true"
+
+# REST API base path (for multi-instance deployments)
+# Allows running multiple tutum-engine instances on the same cluster
+# Example: "/api" or "/tutum/api" or "/instance1/api"
+# If empty, tutum-engine uses default base path
+k8s_tutum_rest_base_path: ""
 
 # Webhook configuration (for tutum-operator-k8s integration)
 k8s_tutum_webhook_enabled: "true"

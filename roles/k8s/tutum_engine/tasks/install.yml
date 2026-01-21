@@ -132,9 +132,11 @@
   ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-service.yml
   changed_when: true
 
-# ==================== Ingress (optional) ====================
+# ==================== Ingress (optional - standard Kubernetes) ====================
 - name: Create Ingress
-  when: k8s_tutum_engine_ingress_enabled | bool
+  when:
+    - k8s_tutum_engine_ingress_enabled | bool
+    - k8s_distribution | default('standard') != 'openshift'
   block:
     - name: Generate Ingress manifest
       ansible.builtin.template:
@@ -144,6 +146,22 @@
 
     - name: Apply Ingress
       ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-ingress.yml
+      changed_when: true
+
+# ==================== Route (optional - OpenShift) ====================
+- name: Create OpenShift Route
+  when:
+    - k8s_tutum_engine_route_enabled | default(false) | bool
+    - k8s_distribution | default('standard') == 'openshift'
+  block:
+    - name: Generate Route manifest
+      ansible.builtin.template:
+        src: route.yml.j2
+        dest: /tmp/tutum-engine-route.yml
+        mode: '0600'
+
+    - name: Apply Route
+      ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-route.yml
       changed_when: true
 
 # ==================== Cleanup temp files ====================
@@ -161,6 +179,7 @@
     - /tmp/tutum-engine-deployment.yml
     - /tmp/tutum-engine-service.yml
     - /tmp/tutum-engine-ingress.yml
+    - /tmp/tutum-engine-route.yml
 
 # ==================== Wait for Deployment ====================
 - name: Wait for tutum-engine deployment to be ready

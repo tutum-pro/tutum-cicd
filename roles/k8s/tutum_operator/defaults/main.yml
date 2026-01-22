@@ -2,7 +2,7 @@
 # k8s_tutum_operator role defaults
 
 # Component versions
-k8s_tutum_operator_version: "0.1.11"
+k8s_tutum_operator_version: "0.1.12"
 
 # Namespace
 k8s_tutum_namespace: "tutum-system"

@@ -73,7 +73,7 @@ k8s_tutum_init_generate_engine: true
 k8s_tutum_init_injection_mode: "csi"
 
 # Operator configuration (only for injection_mode=operator)
-k8s_tutum_operator_version: "0.1.11"
+k8s_tutum_operator_version: "0.1.12"
 k8s_tutum_operator_sync_interval: "5m"
 # Namespace watching mode:
 # - "" (empty): watch all namespaces (cluster-wide)

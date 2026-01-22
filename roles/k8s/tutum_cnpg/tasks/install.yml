@@ -40,9 +40,17 @@
             src: /tmp/cnpg-operator-original.yaml
           register: _cnpg_operator_manifest
 
-        - name: Modify operator manifest for private registry
+        - name: Modify operator manifest for private registry (image only)
+          when: k8s_tutum_registry_url | default('') | length == 0
           ansible.builtin.copy:
             content: "{{ _cnpg_operator_manifest.content | b64decode | regex_replace('ghcr.io/cloudnative-pg/cloudnative-pg:' ~ k8s_tutum_cnpg_operator_version, k8s_tutum_cnpg_operator_image ~ ':' ~ k8s_tutum_cnpg_operator_version) }}"
+            dest: /tmp/cnpg-operator-modified.yaml
+            mode: '0600'
+
+        - name: Modify operator manifest for private registry (image + imagePullSecrets)
+          when: k8s_tutum_registry_url | default('') | length > 0
+          ansible.builtin.copy:
+            content: "{{ _cnpg_operator_manifest.content | b64decode | regex_replace('ghcr.io/cloudnative-pg/cloudnative-pg:' ~ k8s_tutum_cnpg_operator_version, k8s_tutum_cnpg_operator_image ~ ':' ~ k8s_tutum_cnpg_operator_version) | regex_replace('(\\s+)containers:', '\\1imagePullSecrets:\\n\\1  - name: ' ~ k8s_tutum_registry_secret_name ~ '\\n\\1containers:') }}"
             dest: /tmp/cnpg-operator-modified.yaml
             mode: '0600'
 
@@ -64,22 +72,6 @@
           ansible.builtin.command: kubectl apply --server-side -f /tmp/cnpg-operator-modified.yaml
           register: _cnpg_operator_install
           changed_when: "'configured' in _cnpg_operator_install.stdout or 'created' in _cnpg_operator_install.stdout"
-
-        - name: Patch CNPG operator deployment with imagePullSecrets
-          when: k8s_tutum_registry_url | default('') | length > 0
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: cnpg-controller-manager
-                namespace: "{{ k8s_tutum_cnpg_operator_namespace }}"
-              spec:
-                template:
-                  spec:
-                    imagePullSecrets:
-                      - name: "{{ k8s_tutum_registry_secret_name }}"
 
         - name: Remove temporary operator manifests
           ansible.builtin.file:

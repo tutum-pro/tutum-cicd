@@ -107,5 +107,13 @@ k8s_kubelet_paths:
   rke2: "/var/lib/rancher/rke2/agent"
   openshift: "/var/lib/kubelet"
 
+# Image registry credentials (for private registries)
+# Leave empty for public registries like Docker Hub
+k8s_tutum_registry_url: ""
+k8s_tutum_registry_username: ""
+k8s_tutum_registry_password: ""
+k8s_tutum_registry_email: ""
+k8s_tutum_registry_secret_name: "tutum-registry-secret"
+
 # Action: present or absent
 k8s_tutum_engine_state: "present"

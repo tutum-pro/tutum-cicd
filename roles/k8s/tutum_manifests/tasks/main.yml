@@ -2,6 +2,102 @@
 # k8s_tutum_manifests - Main tasks
 # Generate all Kubernetes manifests for Tutum Platform
 
+# ==================== Import from Inventory ====================
+
+- name: Import configuration from inventory file
+  when: k8s_tutum_manifests_inventory_path | length > 0
+  block:
+    - name: Check inventory file exists
+      ansible.builtin.stat:
+        path: "{{ k8s_tutum_manifests_inventory_path }}"
+      register: _inventory_file
+
+    - name: Fail if inventory file not found
+      ansible.builtin.fail:
+        msg: "Inventory file not found: {{ k8s_tutum_manifests_inventory_path }}"
+      when: not _inventory_file.stat.exists
+
+    - name: Read inventory file
+      ansible.builtin.slurp:
+        src: "{{ k8s_tutum_manifests_inventory_path }}"
+      register: _inventory_content
+
+    - name: Parse inventory variables
+      ansible.builtin.set_fact:
+        _parsed_vars: "{{ dict(_inventory_content.content | b64decode | regex_findall('(k8s_[a-z0-9_]+)=([^\\s#]+)')) }}"
+
+    - name: Override variables from inventory
+      ansible.builtin.set_fact:
+        # Component selection
+        k8s_tutum_manifests_db_mode: "{{ _parsed_vars.k8s_tutum_init_db_mode | default(k8s_tutum_manifests_db_mode) }}"
+        k8s_tutum_manifests_injection_mode: "{{ _parsed_vars.k8s_tutum_init_injection_mode | default(k8s_tutum_manifests_injection_mode) }}"
+        k8s_tutum_manifests_ingress_enabled: "{{ _parsed_vars.k8s_tutum_engine_ingress_enabled | default(_parsed_vars.k8s_tutum_engine_route_enabled) | default(k8s_tutum_manifests_ingress_enabled) }}"
+        # Distribution and namespace
+        k8s_distribution: "{{ _parsed_vars.k8s_distribution | default(k8s_distribution) }}"
+        k8s_tutum_namespace: "{{ _parsed_vars.k8s_tutum_namespace | default(k8s_tutum_namespace) }}"
+        k8s_tutum_cnpg_namespace: "{{ _parsed_vars.k8s_tutum_cnpg_namespace | default(k8s_tutum_cnpg_namespace) }}"
+        # Versions
+        k8s_tutum_engine_version: "{{ _parsed_vars.k8s_tutum_engine_version | default(k8s_tutum_engine_version) }}"
+        k8s_tutum_csi_version: "{{ _parsed_vars.k8s_tutum_csi_version | default(k8s_tutum_csi_version) }}"
+        k8s_tutum_operator_version: "{{ _parsed_vars.k8s_tutum_operator_version | default(k8s_tutum_operator_version) }}"
+        k8s_tutum_postgres_version: "{{ _parsed_vars.k8s_tutum_postgres_version | default(k8s_tutum_postgres_version) }}"
+        k8s_tutum_cnpg_operator_version: "{{ _parsed_vars.k8s_tutum_cnpg_operator_version | default(k8s_tutum_cnpg_operator_version) }}"
+        k8s_tutum_cnpg_postgres_version: "{{ _parsed_vars.k8s_tutum_cnpg_postgres_version | default(k8s_tutum_cnpg_postgres_version) }}"
+        # Images
+        k8s_tutum_engine_image: "{{ _parsed_vars.k8s_tutum_engine_image | default(k8s_tutum_engine_image) }}"
+        k8s_tutum_postgres_image: "{{ _parsed_vars.k8s_tutum_postgres_image | default(k8s_tutum_postgres_image) }}"
+        k8s_tutum_csi_image: "{{ _parsed_vars.k8s_tutum_csi_image | default(k8s_tutum_csi_image) }}"
+        k8s_tutum_operator_image: "{{ _parsed_vars.k8s_tutum_operator_image | default(k8s_tutum_operator_image) }}"
+        k8s_tutum_cnpg_image: "{{ _parsed_vars.k8s_tutum_cnpg_image | default(k8s_tutum_cnpg_image) }}"
+        k8s_tutum_cnpg_operator_image: "{{ _parsed_vars.k8s_tutum_cnpg_operator_image | default(k8s_tutum_cnpg_operator_image) }}"
+        k8s_csi_provisioner_image: "{{ _parsed_vars.k8s_csi_provisioner_image | default(k8s_csi_provisioner_image) }}"
+        k8s_csi_node_driver_registrar_image: "{{ _parsed_vars.k8s_csi_node_driver_registrar_image | default(k8s_csi_node_driver_registrar_image) }}"
+        # Security keys
+        k8s_tutum_master_key: "{{ _parsed_vars.k8s_tutum_master_key | default(k8s_tutum_master_key) }}"
+        k8s_tutum_jwt_secret: "{{ _parsed_vars.k8s_tutum_jwt_secret | default(k8s_tutum_jwt_secret) }}"
+        # REST API
+        k8s_tutum_rest_base_path: "{{ _parsed_vars.k8s_tutum_rest_base_path | default(k8s_tutum_rest_base_path) }}"
+        # CNPG
+        k8s_tutum_cnpg_cluster_name: "{{ _parsed_vars.k8s_tutum_cnpg_cluster_name | default(k8s_tutum_cnpg_cluster_name) }}"
+        k8s_tutum_cnpg_instances: "{{ _parsed_vars.k8s_tutum_cnpg_instances | default(k8s_tutum_cnpg_instances) }}"
+        k8s_tutum_cnpg_storage_size: "{{ _parsed_vars.k8s_tutum_cnpg_storage_size | default(k8s_tutum_cnpg_storage_size) }}"
+        k8s_tutum_cnpg_db_name: "{{ _parsed_vars.k8s_tutum_cnpg_db_name | default(k8s_tutum_cnpg_db_name) }}"
+        k8s_tutum_cnpg_db_user: "{{ _parsed_vars.k8s_tutum_cnpg_db_user | default(k8s_tutum_cnpg_db_user) }}"
+        k8s_tutum_cnpg_db_password: "{{ _parsed_vars.k8s_tutum_cnpg_db_password | default(k8s_tutum_cnpg_db_password) }}"
+        k8s_tutum_cnpg_enable_pooler: "{{ _parsed_vars.k8s_tutum_cnpg_enable_pooler | default(k8s_tutum_cnpg_enable_pooler) }}"
+        # Ingress
+        k8s_tutum_engine_ingress_class_name: "{{ _parsed_vars.k8s_tutum_engine_ingress_class_name | default(k8s_tutum_engine_ingress_class_name) }}"
+        k8s_tutum_engine_ingress_host: "{{ _parsed_vars.k8s_tutum_engine_ingress_host | default(k8s_tutum_engine_ingress_host) }}"
+        k8s_tutum_engine_ingress_path: "{{ _parsed_vars.k8s_tutum_engine_ingress_path | default(k8s_tutum_engine_ingress_path) }}"
+        k8s_tutum_engine_ingress_tls_enabled: "{{ _parsed_vars.k8s_tutum_engine_ingress_tls_enabled | default(k8s_tutum_engine_ingress_tls_enabled) }}"
+        k8s_tutum_engine_ingress_tls_secret_name: "{{ _parsed_vars.k8s_tutum_engine_ingress_tls_secret_name | default(k8s_tutum_engine_ingress_tls_secret_name) }}"
+        # Route (OpenShift)
+        k8s_tutum_engine_route_host: "{{ _parsed_vars.k8s_tutum_engine_route_host | default(k8s_tutum_engine_route_host) }}"
+        k8s_tutum_engine_route_path: "{{ _parsed_vars.k8s_tutum_engine_route_path | default(k8s_tutum_engine_route_path) }}"
+        k8s_tutum_engine_route_termination: "{{ _parsed_vars.k8s_tutum_engine_route_termination | default(k8s_tutum_engine_route_termination) }}"
+        # Operator
+        k8s_tutum_operator_sync_interval: "{{ _parsed_vars.k8s_tutum_operator_sync_interval | default(k8s_tutum_operator_sync_interval) }}"
+        k8s_tutum_operator_watch_namespaces: "{{ _parsed_vars.k8s_tutum_operator_watch_namespaces | default(k8s_tutum_operator_watch_namespaces) }}"
+        # Engine URL
+        k8s_tutum_engine_url: "{{ _parsed_vars.k8s_tutum_engine_url | default(k8s_tutum_engine_url) }}"
+        # Registry credentials
+        k8s_tutum_registry_url: "{{ _parsed_vars.k8s_tutum_registry_url | default(k8s_tutum_registry_url) }}"
+        k8s_tutum_registry_username: "{{ _parsed_vars.k8s_tutum_registry_username | default(k8s_tutum_registry_username) }}"
+        k8s_tutum_registry_password: "{{ _parsed_vars.k8s_tutum_registry_password | default(k8s_tutum_registry_password) }}"
+        k8s_tutum_registry_email: "{{ _parsed_vars.k8s_tutum_registry_email | default(k8s_tutum_registry_email) }}"
+        k8s_tutum_registry_secret_name: "{{ _parsed_vars.k8s_tutum_registry_secret_name | default(k8s_tutum_registry_secret_name) }}"
+
+    - name: Display imported configuration
+      ansible.builtin.debug:
+        msg: |
+          Imported configuration from: {{ k8s_tutum_manifests_inventory_path }}
+          - Distribution: {{ k8s_distribution }}
+          - Namespace: {{ k8s_tutum_namespace }}
+          - DB mode: {{ k8s_tutum_manifests_db_mode }}
+          - Injection mode: {{ k8s_tutum_manifests_injection_mode }}
+          - Ingress enabled: {{ k8s_tutum_manifests_ingress_enabled }}
+          - REST base path: {{ k8s_tutum_rest_base_path }}
+
 # ==================== Validation ====================
 
 - name: Validate configuration

@@ -32,5 +32,9 @@ k8s_tutum_operator_resources:
     cpu: "200m"
     memory: "256Mi"
 
+# Image registry credentials (for private registries)
+k8s_tutum_registry_url: ""
+k8s_tutum_registry_secret_name: "tutum-registry-secret"
+
 # Action: present or absent
 k8s_tutum_operator_state: "present"

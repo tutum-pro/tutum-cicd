@@ -4,7 +4,13 @@
 # Copy this file and adjust for your environment.
 # Usage: ansible-playbook playbooks/install-tutum-k8s.yml -i this-file.ini
 
-[all:vars]
+[k8s_controllers]
+localhost ansible_connection=local
+
+# To deploy from a remote host, comment localhost and use:
+# k8s-controller ansible_host=192.168.1.100 ansible_user=admin ansible_connection=ssh
+
+[k8s_controllers:vars]
 # ==================== Kubernetes Distribution ====================
 k8s_distribution={{ k8s_distribution | default('kubernetes') }}
 
@@ -59,7 +65,7 @@ k8s_tutum_postgres_image={{ _registry_prefix }}/postgres
 {% elif k8s_tutum_offline_db_mode == 'cnpg' %}
 # CloudNativePG (CNPG mode)
 k8s_tutum_cnpg_operator_image={{ _registry_prefix }}/cloudnative-pg
-k8s_tutum_cnpg_image={{ _registry_prefix }}/postgresql:{{ k8s_tutum_cnpg_postgres_version }}
+k8s_tutum_cnpg_image={{ _registry_prefix }}/postgresql
 {% endif %}
 
 {% if k8s_tutum_offline_injection_mode == 'csi' %}
@@ -115,3 +121,27 @@ k8s_tutum_operator_image={{ _registry_prefix }}/tutum-operator-k8s
 # ==================== Security (change these!) ====================
 # k8s_tutum_master_key=  # Leave empty to auto-generate
 # k8s_tutum_jwt_secret=  # Leave empty to auto-generate
+
+# ==================== Image Registry Credentials ====================
+# For private/on-prem registries that require authentication
+{% if k8s_tutum_offline_internal_registry | length > 0 %}
+k8s_tutum_registry_url={{ k8s_tutum_offline_internal_registry }}
+{% if k8s_tutum_offline_target_registry_username | length > 0 %}
+k8s_tutum_registry_username={{ k8s_tutum_offline_target_registry_username }}
+k8s_tutum_registry_password={{ k8s_tutum_offline_target_registry_password }}
+{% if k8s_tutum_offline_target_registry_email | length > 0 %}
+k8s_tutum_registry_email={{ k8s_tutum_offline_target_registry_email }}
+{% endif %}
+{% else %}
+# k8s_tutum_registry_username=your-username
+# k8s_tutum_registry_password=your-password
+# k8s_tutum_registry_email=your-email@example.com
+{% endif %}
+k8s_tutum_registry_secret_name={{ k8s_tutum_offline_registry_secret_name }}
+{% else %}
+# k8s_tutum_registry_url=registry.example.com
+# k8s_tutum_registry_username=your-username
+# k8s_tutum_registry_password=your-password
+# k8s_tutum_registry_email=your-email@example.com
+# k8s_tutum_registry_secret_name=tutum-registry-secret
+{% endif %}

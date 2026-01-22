@@ -13,6 +13,13 @@ k8s_tutum_manifests_create_dir: true
 # Overwrite existing files
 k8s_tutum_manifests_overwrite: false
 
+# ==================== Inventory Import ====================
+
+# Path to existing inventory file to import configuration from
+# When set, variables will be read from the inventory file
+# Example: -e k8s_tutum_manifests_inventory_path=./inventory/k8s.ini
+k8s_tutum_manifests_inventory_path: ""
+
 # ==================== Component Selection ====================
 
 # Database mode: embedded, cnpg, external
@@ -123,6 +130,7 @@ k8s_tutum_postgres_resources:
 k8s_tutum_cnpg_cluster_name: "tutum-postgres"
 k8s_tutum_cnpg_instances: 1
 k8s_tutum_cnpg_image: ""
+k8s_tutum_cnpg_operator_image: ""
 k8s_tutum_cnpg_image_pull_policy: "IfNotPresent"
 k8s_tutum_cnpg_storage_class: ""
 k8s_tutum_cnpg_storage_size: "5Gi"
@@ -233,6 +241,15 @@ k8s_tutum_engine_route_insecure_edge_termination_policy: "Redirect"
 k8s_tutum_engine_route_tls_certificate: ""
 k8s_tutum_engine_route_tls_key: ""
 k8s_tutum_engine_route_tls_ca_certificate: ""
+
+# ==================== Image Registry Credentials ====================
+
+# For private registries (leave empty for public registries)
+k8s_tutum_registry_url: ""
+k8s_tutum_registry_username: ""
+k8s_tutum_registry_password: ""
+k8s_tutum_registry_email: ""
+k8s_tutum_registry_secret_name: "tutum-registry-secret"
 
 # ==================== Internal Variables ====================
 

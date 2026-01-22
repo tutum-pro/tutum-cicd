@@ -47,6 +47,30 @@ k8s_tutum_offline_internal_prefix: "tutum"
 # Save retagged images (with internal registry prefix)
 k8s_tutum_offline_save_retagged: true
 
+# ==================== Source Registry Credentials ====================
+# Credentials for pulling images from source registries
+# Required for private registries (e.g., private Docker Hub, ghcr.io with auth)
+# Leave empty for public registries
+
+# Docker Hub credentials (for tutumpro/* images)
+k8s_tutum_offline_dockerhub_username: ""
+k8s_tutum_offline_dockerhub_password: ""
+
+# GitHub Container Registry credentials (for ghcr.io/* images like CNPG)
+k8s_tutum_offline_ghcr_username: ""
+k8s_tutum_offline_ghcr_token: ""
+
+# ==================== Target Registry Credentials ====================
+# Credentials for pushing images to internal/target registry
+# These will be included in the bundle for push-images.sh script
+
+k8s_tutum_offline_target_registry_username: ""
+k8s_tutum_offline_target_registry_password: ""
+k8s_tutum_offline_target_registry_email: ""
+
+# Name of imagePullSecret to create in Kubernetes
+k8s_tutum_offline_registry_secret_name: "tutum-registry-secret"
+
 # ==================== Component Versions ====================
 
 # Tutum Platform components

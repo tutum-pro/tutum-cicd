@@ -16,12 +16,78 @@
       ansible.builtin.command: kubectl apply -f /tmp/cnpg-operator-namespace.yml
       changed_when: true
 
-    - name: Install CNPG operator via kubectl
+    # Standard installation (public registry)
+    - name: Install CNPG operator via kubectl (public registry)
+      when: k8s_tutum_cnpg_operator_image | default('') | length == 0
       ansible.builtin.command: >
         kubectl apply --server-side -f
         https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-{{ k8s_tutum_cnpg_operator_version | regex_replace('^(\d+\.\d+).*', '\1') }}/releases/cnpg-{{ k8s_tutum_cnpg_operator_version }}.yaml
       register: _cnpg_operator_install
       changed_when: "'configured' in _cnpg_operator_install.stdout or 'created' in _cnpg_operator_install.stdout"
+
+    # Private registry installation - download, modify, apply
+    - name: Install CNPG operator (private registry)
+      when: k8s_tutum_cnpg_operator_image | default('') | length > 0
+      block:
+        - name: Download CNPG operator manifest
+          ansible.builtin.get_url:
+            url: "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-{{ k8s_tutum_cnpg_operator_version | regex_replace('^(\\d+\\.\\d+).*', '\\1') }}/releases/cnpg-{{ k8s_tutum_cnpg_operator_version }}.yaml"
+            dest: /tmp/cnpg-operator-original.yaml
+            mode: '0600'
+
+        - name: Read operator manifest
+          ansible.builtin.slurp:
+            src: /tmp/cnpg-operator-original.yaml
+          register: _cnpg_operator_manifest
+
+        - name: Modify operator manifest for private registry
+          ansible.builtin.copy:
+            content: "{{ _cnpg_operator_manifest.content | b64decode | regex_replace('ghcr.io/cloudnative-pg/cloudnative-pg:' ~ k8s_tutum_cnpg_operator_version, k8s_tutum_cnpg_operator_image ~ ':' ~ k8s_tutum_cnpg_operator_version) }}"
+            dest: /tmp/cnpg-operator-modified.yaml
+            mode: '0600'
+
+        - name: Create imagePullSecret in operator namespace
+          when: k8s_tutum_registry_url | default('') | length > 0
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: "{{ k8s_tutum_registry_secret_name }}"
+                namespace: "{{ k8s_tutum_cnpg_operator_namespace }}"
+              type: kubernetes.io/dockerconfigjson
+              data:
+                .dockerconfigjson: "{{ lookup('template', '../tutum_engine/templates/dockerconfigjson.j2') | b64encode }}"
+
+        - name: Apply modified CNPG operator manifest
+          ansible.builtin.command: kubectl apply --server-side -f /tmp/cnpg-operator-modified.yaml
+          register: _cnpg_operator_install
+          changed_when: "'configured' in _cnpg_operator_install.stdout or 'created' in _cnpg_operator_install.stdout"
+
+        - name: Patch CNPG operator deployment with imagePullSecrets
+          when: k8s_tutum_registry_url | default('') | length > 0
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: cnpg-controller-manager
+                namespace: "{{ k8s_tutum_cnpg_operator_namespace }}"
+              spec:
+                template:
+                  spec:
+                    imagePullSecrets:
+                      - name: "{{ k8s_tutum_registry_secret_name }}"
+
+        - name: Remove temporary operator manifests
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /tmp/cnpg-operator-original.yaml
+            - /tmp/cnpg-operator-modified.yaml
 
     - name: Wait for CNPG operator to be ready
       ansible.builtin.command: >
@@ -31,7 +97,7 @@
 
     - name: Display operator installation result
       ansible.builtin.debug:
-        msg: "CNPG Operator {{ k8s_tutum_cnpg_operator_version }} installed successfully"
+        msg: "CNPG Operator {{ k8s_tutum_cnpg_operator_version }} installed successfully{% if k8s_tutum_cnpg_operator_image | default('') | length > 0 %} (image: {{ k8s_tutum_cnpg_operator_image }}:{{ k8s_tutum_cnpg_operator_version }}){% endif %}"
 
 # ==================== Wait for CNPG Webhook ====================
 
@@ -56,6 +122,21 @@
 - name: Apply cluster namespace
   ansible.builtin.command: kubectl apply -f /tmp/cnpg-cluster-namespace.yml
   changed_when: true
+
+# Create image pull secret in CNPG namespace (for private registries)
+- name: Create image pull secret in CNPG namespace
+  when: k8s_tutum_registry_url | default('') | length > 0
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ k8s_tutum_registry_secret_name }}"
+        namespace: "{{ k8s_tutum_cnpg_namespace }}"
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: "{{ lookup('template', '../tutum_engine/templates/dockerconfigjson.j2') | b64encode }}"
 
 # Check if secrets already exist (to preserve passwords across runs)
 - name: Check if app credentials secret exists

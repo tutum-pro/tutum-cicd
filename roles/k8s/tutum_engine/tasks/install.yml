@@ -29,6 +29,21 @@
   ansible.builtin.command: kubectl apply -f /tmp/tutum-engine-namespace.yml
   changed_when: true
 
+# ==================== Image Pull Secret (for private registries) ====================
+- name: Create image pull secret
+  when: k8s_tutum_registry_url | default('') | length > 0
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ k8s_tutum_registry_secret_name }}"
+        namespace: "{{ k8s_tutum_namespace }}"
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: "{{ lookup('template', 'dockerconfigjson.j2') | b64encode }}"
+
 # ==================== ConfigMap & Secret ====================
 - name: Generate ConfigMap manifest
   ansible.builtin.template:

@@ -143,6 +143,26 @@
   ansible.builtin.debug:
     msg: "Will download {{ _required_images | length }} images: {{ _required_images | map(attribute='name') | list }}"
 
+# ==================== Docker Registry Login ====================
+
+- name: Login to Docker Hub (if credentials provided)
+  when: k8s_tutum_offline_dockerhub_username | length > 0
+  ansible.builtin.command: >
+    docker login -u {{ k8s_tutum_offline_dockerhub_username }}
+    -p {{ k8s_tutum_offline_dockerhub_password }}
+    docker.io
+  changed_when: true
+  no_log: true
+
+- name: Login to GitHub Container Registry (if credentials provided)
+  when: k8s_tutum_offline_ghcr_username | length > 0
+  ansible.builtin.command: >
+    docker login -u {{ k8s_tutum_offline_ghcr_username }}
+    -p {{ k8s_tutum_offline_ghcr_token }}
+    ghcr.io
+  changed_when: true
+  no_log: true
+
 # ==================== Pull Images ====================
 
 - name: Pull required images

@@ -193,3 +193,57 @@ k8s_tutum_engine_ingress_tls_secret_name={{ k8s_tutum_init_ingress_tls_secret_na
 # k8s_tutum_engine_ingress_tls_secret_name=tutum-tls
 {% endif %}
 {% endif %}
+
+# =============================================================================
+# Image Registry Credentials (for private/on-prem registries)
+# =============================================================================
+# Leave empty for public registries like Docker Hub
+{% if k8s_tutum_init_registry_url | default('') | length > 0 %}
+k8s_tutum_registry_url={{ k8s_tutum_init_registry_url }}
+k8s_tutum_registry_username={{ k8s_tutum_init_registry_username }}
+k8s_tutum_registry_password={{ k8s_tutum_init_registry_password }}
+{% if k8s_tutum_init_registry_email | default('') | length > 0 %}
+k8s_tutum_registry_email={{ k8s_tutum_init_registry_email }}
+{% endif %}
+k8s_tutum_registry_secret_name={{ k8s_tutum_init_registry_secret_name }}
+
+# =============================================================================
+# Custom Image Names (for private/on-prem registries)
+# =============================================================================
+# Override default image sources when using private registry
+# These are set when k8s_tutum_init_registry_url is configured
+{% set _registry_prefix = k8s_tutum_init_registry_url %}
+# Tutum Engine
+k8s_tutum_engine_image={{ _registry_prefix }}/tutum-engine
+{% if k8s_tutum_init_db_mode == "embedded" %}
+# PostgreSQL (embedded mode)
+k8s_tutum_postgres_image={{ _registry_prefix }}/postgres
+{% elif k8s_tutum_init_db_mode == "cnpg" %}
+# CloudNativePG
+k8s_tutum_cnpg_operator_image={{ _registry_prefix }}/cloudnative-pg
+k8s_tutum_cnpg_image={{ _registry_prefix }}/postgresql
+{% endif %}
+{% if k8s_tutum_init_injection_mode == "csi" %}
+# CSI Driver
+k8s_tutum_csi_image={{ _registry_prefix }}/tutum-csi-driver-k8s
+k8s_csi_provisioner_image={{ _registry_prefix }}/csi-provisioner
+k8s_csi_node_driver_registrar_image={{ _registry_prefix }}/csi-node-driver-registrar
+{% elif k8s_tutum_init_injection_mode == "operator" %}
+# Tutum Operator
+k8s_tutum_operator_image={{ _registry_prefix }}/tutum-operator-k8s
+{% endif %}
+{% else %}
+# k8s_tutum_registry_url=registry.example.com
+# k8s_tutum_registry_username=your-username
+# k8s_tutum_registry_password=your-password
+# k8s_tutum_registry_email=your-email@example.com
+# k8s_tutum_registry_secret_name=tutum-registry-secret
+#
+# When using private registry, also configure image sources:
+# k8s_tutum_engine_image=registry.example.com/tutum-engine
+# k8s_tutum_postgres_image=registry.example.com/postgres  # (embedded mode)
+# k8s_tutum_cnpg_operator_image=registry.example.com/cloudnative-pg  # (cnpg mode)
+# k8s_tutum_cnpg_image=registry.example.com/postgresql  # (cnpg mode)
+# k8s_tutum_csi_image=registry.example.com/tutum-csi-driver-k8s  # (csi mode)
+# k8s_tutum_operator_image=registry.example.com/tutum-operator-k8s  # (operator mode)
+{% endif %}

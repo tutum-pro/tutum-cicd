@@ -32,6 +32,10 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: tutum-engine
+{% if k8s_tutum_registry_url | default('') | length > 0 %}
+      imagePullSecrets:
+        - name: {{ k8s_tutum_registry_secret_name }}
+{% endif %}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

@@ -19,6 +19,10 @@ k8s_tutum_cnpg_operator_namespace: "cnpg-system"
 # Install operator (set to false if already installed cluster-wide)
 k8s_tutum_cnpg_install_operator: true
 
+# CNPG operator image (empty = use default from GitHub manifest)
+# For private registries, set to: registry.example.com/tutum/ghcr.io/cloudnative-pg/cloudnative-pg
+k8s_tutum_cnpg_operator_image: ""
+
 # ==================== PostgreSQL Cluster ====================
 
 # Cluster name
@@ -97,6 +101,12 @@ k8s_tutum_cnpg_pooler_instances: 1
 
 # Pooler mode: session, transaction, statement
 k8s_tutum_cnpg_pooler_mode: "transaction"
+
+# ==================== Image Registry Credentials ====================
+
+# For private registries (leave empty for public registries)
+k8s_tutum_registry_url: ""
+k8s_tutum_registry_secret_name: "tutum-registry-secret"
 
 # ==================== State ====================
 

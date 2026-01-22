@@ -23,6 +23,10 @@ spec:
         app.kubernetes.io/version: "{{ k8s_tutum_csi_version }}"
     spec:
       serviceAccountName: tutum-csi-node
+{% if k8s_tutum_registry_url | default('') | length > 0 %}
+      imagePullSecrets:
+        - name: {{ k8s_tutum_registry_secret_name }}
+{% endif %}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:

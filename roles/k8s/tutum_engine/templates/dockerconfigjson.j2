@@ -1,0 +1,1 @@
+{"auths":{"{{ k8s_tutum_registry_url }}":{"username":"{{ k8s_tutum_registry_username }}","password":"{{ k8s_tutum_registry_password }}"{% if k8s_tutum_registry_email | default('') | length > 0 %},"email":"{{ k8s_tutum_registry_email }}"{% endif %},"auth":"{{ (k8s_tutum_registry_username ~ ':' ~ k8s_tutum_registry_password) | b64encode }}"}}}

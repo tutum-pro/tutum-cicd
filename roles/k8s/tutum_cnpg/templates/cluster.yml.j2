@@ -11,12 +11,20 @@ spec:
   instances: {{ k8s_tutum_cnpg_instances }}
 
 {% if k8s_tutum_cnpg_image %}
+{% if ':' in k8s_tutum_cnpg_image %}
   imageName: {{ k8s_tutum_cnpg_image }}
+{% else %}
+  imageName: {{ k8s_tutum_cnpg_image }}:{{ k8s_tutum_cnpg_postgres_version }}
+{% endif %}
 {% else %}
   # Use default CNPG image for PostgreSQL {{ k8s_tutum_cnpg_postgres_version }}
   imageName: ghcr.io/cloudnative-pg/postgresql:{{ k8s_tutum_cnpg_postgres_version }}
 {% endif %}
   imagePullPolicy: {{ k8s_tutum_cnpg_image_pull_policy }}
+{% if k8s_tutum_registry_url | default('') | length > 0 %}
+  imagePullSecrets:
+    - name: {{ k8s_tutum_registry_secret_name }}
+{% endif %}
 
   # PostgreSQL configuration
   postgresql:

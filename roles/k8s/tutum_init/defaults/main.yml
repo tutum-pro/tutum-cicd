@@ -103,3 +103,12 @@ k8s_tutum_init_ingress_cert_manager_issuer: ""
 # When distribution is "openshift", Route is used instead of Ingress
 k8s_tutum_init_route_termination: "edge"  # edge, passthrough, reencrypt
 k8s_tutum_init_route_insecure_edge_termination_policy: "Redirect"  # Allow, Redirect, None
+
+# Image registry credentials (for private/on-prem registries)
+# These credentials will be used to create imagePullSecrets in Kubernetes
+# Leave empty for public registries like Docker Hub
+k8s_tutum_init_registry_url: ""           # Registry URL (e.g., registry.example.com)
+k8s_tutum_init_registry_username: ""      # Registry username
+k8s_tutum_init_registry_password: ""      # Registry password
+k8s_tutum_init_registry_email: ""         # Registry email (optional)
+k8s_tutum_init_registry_secret_name: "tutum-registry-secret"  # Name of the imagePullSecret

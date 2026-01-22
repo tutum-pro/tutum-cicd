@@ -166,7 +166,7 @@
 # ==================== Pull Images ====================
 
 - name: Pull required images
-  ansible.builtin.command: "docker pull {{ item.name }}:{{ item.tag }}"
+  ansible.builtin.command: "docker pull --platform {{ k8s_tutum_offline_platform }} {{ item.name }}:{{ item.tag }}"
   loop: "{{ _required_images }}"
   loop_control:
     label: "{{ item.name }}:{{ item.tag }}"

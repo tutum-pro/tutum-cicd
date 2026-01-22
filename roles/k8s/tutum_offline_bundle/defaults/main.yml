@@ -34,6 +34,11 @@ k8s_tutum_offline_injection_mode: "operator"
 # Kubernetes distribution (affects CSI kubelet paths)
 k8s_distribution: "standard"
 
+# Target platform/architecture for images
+# Default: linux/amd64 (most Kubernetes clusters run on amd64)
+# Options: linux/amd64, linux/arm64
+k8s_tutum_offline_platform: "linux/amd64"
+
 # ==================== Internal Registry Configuration ====================
 
 # Internal registry address (for retagging images)

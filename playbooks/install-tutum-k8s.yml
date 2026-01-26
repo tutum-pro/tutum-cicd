@@ -27,6 +27,41 @@
   vars:
     # Database mode: "embedded" or "external"
     k8s_tutum_db_mode: "embedded"
+    k8s_tutum_namespace: "tutum-system"
+    k8s_tutum_registry_secret_name: "tutum-registry-secret"
+
+  pre_tasks:
+    - name: Create namespace
+      ansible.builtin.shell: kubectl create namespace {{ k8s_tutum_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+      changed_when: false
+
+    - name: Create image pull secret for private registry (shared by all components)
+      when: k8s_tutum_registry_url | default('') | length > 0
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ k8s_tutum_registry_secret_name }}"
+            namespace: "{{ k8s_tutum_namespace }}"
+            labels:
+              app.kubernetes.io/name: tutum-system
+              app.kubernetes.io/component: registry-credentials
+              app.kubernetes.io/managed-by: ansible
+          type: kubernetes.io/dockerconfigjson
+          stringData:
+            .dockerconfigjson: |
+              {
+                "auths": {
+                  "{{ k8s_tutum_registry_url }}": {
+                    "username": "{{ k8s_tutum_registry_username }}",
+                    "password": "{{ k8s_tutum_registry_password }}",
+                    "email": "{{ k8s_tutum_registry_email | default('') }}",
+                    "auth": "{{ (k8s_tutum_registry_username ~ ':' ~ k8s_tutum_registry_password) | b64encode }}"
+                  }
+                }
+              }
 
   roles:
     # Embedded PostgreSQL (only when db_mode=embedded)

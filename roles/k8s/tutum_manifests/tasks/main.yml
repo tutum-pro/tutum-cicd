@@ -170,6 +170,16 @@
     mode: '0644'
     force: "{{ k8s_tutum_manifests_overwrite | bool }}"
 
+# ==================== Generate Registry Secret (if using private registry) ====================
+
+- name: Generate registry secret manifest
+  when: k8s_tutum_registry_url | default('') | length > 0
+  ansible.builtin.template:
+    src: registry-secret.yml.j2
+    dest: "{{ k8s_tutum_manifests_output_path }}/01-registry-secret.yml"
+    mode: '0644'
+    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
+
 # ==================== Generate Database Manifests ====================
 
 - name: Generate embedded PostgreSQL manifests

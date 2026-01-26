@@ -36,6 +36,9 @@ k8s_tutum_postgres_service_type: "ClusterIP"
 
 # Image registry credentials (for private registries)
 k8s_tutum_registry_url: ""
+k8s_tutum_registry_username: ""
+k8s_tutum_registry_password: ""
+k8s_tutum_registry_email: ""
 k8s_tutum_registry_secret_name: "tutum-registry-secret"
 
 # Action: present or absent

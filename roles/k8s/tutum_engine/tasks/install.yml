@@ -30,8 +30,21 @@
   changed_when: true
 
 # ==================== Image Pull Secret (for private registries) ====================
-- name: Create image pull secret
+# NOTE: Secret is created in playbook pre_tasks to avoid duplication.
+# This block is kept for backward compatibility when using role directly.
+- name: Check if registry secret already exists
   when: k8s_tutum_registry_url | default('') | length > 0
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ k8s_tutum_registry_secret_name }}"
+    namespace: "{{ k8s_tutum_namespace }}"
+  register: _registry_secret_check
+
+- name: Create image pull secret (if not exists)
+  when:
+    - k8s_tutum_registry_url | default('') | length > 0
+    - _registry_secret_check.resources | length == 0
   kubernetes.core.k8s:
     state: present
     definition:
@@ -40,6 +53,8 @@
       metadata:
         name: "{{ k8s_tutum_registry_secret_name }}"
         namespace: "{{ k8s_tutum_namespace }}"
+        labels:
+          app.kubernetes.io/created-by: tutum-engine-role
       type: kubernetes.io/dockerconfigjson
       data:
         .dockerconfigjson: "{{ lookup('template', 'dockerconfigjson.j2') | b64encode }}"

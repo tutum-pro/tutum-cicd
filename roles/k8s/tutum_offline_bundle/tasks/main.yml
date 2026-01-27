@@ -21,11 +21,45 @@
       - db_mode must be: embedded, cnpg, or external
       - injection_mode must be: csi or operator
 
-- name: Check Docker is available
-  ansible.builtin.command: docker version
+- name: Auto-detect container runtime if not specified
+  when: k8s_tutum_offline_container_runtime == 'auto'
+  block:
+    - name: Check if podman is available
+      ansible.builtin.command: command -v podman
+      changed_when: false
+      register: _podman_check
+      failed_when: false
+
+    - name: Check if docker is available
+      ansible.builtin.command: command -v docker
+      changed_when: false
+      register: _docker_check
+      failed_when: false
+
+    - name: Set runtime to podman if available
+      ansible.builtin.set_fact:
+        k8s_tutum_offline_container_runtime: "podman"
+      when: _podman_check.rc == 0
+
+    - name: Set runtime to docker if podman not available
+      ansible.builtin.set_fact:
+        k8s_tutum_offline_container_runtime: "docker"
+      when:
+        - _podman_check.rc != 0
+        - _docker_check.rc == 0
+
+    - name: Fail if no container runtime found
+      ansible.builtin.fail:
+        msg: "No container runtime found. Please install Docker or Podman."
+      when:
+        - _podman_check.rc != 0
+        - _docker_check.rc != 0
+
+- name: Check container runtime is available
+  ansible.builtin.command: "{{ k8s_tutum_offline_container_runtime }} version"
   changed_when: false
-  register: _docker_check
-  failed_when: _docker_check.rc != 0
+  register: _runtime_check
+  failed_when: _runtime_check.rc != 0
 
 # ==================== Parse Inventory (optional) ====================
 
@@ -143,12 +177,12 @@
   ansible.builtin.debug:
     msg: "Will download {{ _required_images | length }} images: {{ _required_images | map(attribute='name') | list }}"
 
-# ==================== Docker Registry Login ====================
+# ==================== Container Registry Login ====================
 
 - name: Login to Docker Hub (if credentials provided)
   when: k8s_tutum_offline_dockerhub_username | length > 0
   ansible.builtin.command: >
-    docker login -u {{ k8s_tutum_offline_dockerhub_username }}
+    {{ k8s_tutum_offline_container_runtime }} login -u {{ k8s_tutum_offline_dockerhub_username }}
     -p {{ k8s_tutum_offline_dockerhub_password }}
     docker.io
   changed_when: true
@@ -157,7 +191,7 @@
 - name: Login to GitHub Container Registry (if credentials provided)
   when: k8s_tutum_offline_ghcr_username | length > 0
   ansible.builtin.command: >
-    docker login -u {{ k8s_tutum_offline_ghcr_username }}
+    {{ k8s_tutum_offline_container_runtime }} login -u {{ k8s_tutum_offline_ghcr_username }}
     -p {{ k8s_tutum_offline_ghcr_token }}
     ghcr.io
   changed_when: true
@@ -166,7 +200,7 @@
 # ==================== Pull Images ====================
 
 - name: Pull required images
-  ansible.builtin.command: "docker pull --platform {{ k8s_tutum_offline_platform }} {{ item.name }}:{{ item.tag }}"
+  ansible.builtin.command: "{{ k8s_tutum_offline_container_runtime }} pull --platform {{ k8s_tutum_offline_platform }} {{ item.name }}:{{ item.tag }}"
   loop: "{{ _required_images }}"
   loop_control:
     label: "{{ item.name }}:{{ item.tag }}"
@@ -186,7 +220,7 @@
       loop: "{{ _required_images }}"
 
     - name: Tag images for internal registry
-      ansible.builtin.command: "docker tag {{ item.original }} {{ item.internal }}"
+      ansible.builtin.command: "{{ k8s_tutum_offline_container_runtime }} tag {{ item.original }} {{ item.internal }}"
       loop: "{{ _retagged_images }}"
       loop_control:
         label: "{{ item.original }} -> {{ item.internal }}"
@@ -196,7 +230,7 @@
 
 - name: Save original images to tar files
   ansible.builtin.command: >
-    docker save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}.tar
+    {{ k8s_tutum_offline_container_runtime }} save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}.tar
     {{ item.name }}:{{ item.tag }}
   loop: "{{ _required_images }}"
   loop_control:
@@ -208,7 +242,7 @@
     - k8s_tutum_offline_internal_registry | length > 0
     - k8s_tutum_offline_save_retagged | bool
   ansible.builtin.command: >
-    docker save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}-internal.tar
+    {{ k8s_tutum_offline_container_runtime }} save -o {{ k8s_tutum_offline_output_path }}/images/{{ item.component }}-internal.tar
     {{ item.internal }}
   loop: "{{ _retagged_images }}"
   loop_control:
@@ -337,12 +371,13 @@
       Bundle size: {{ (_archive_stat.stat.size / 1024 / 1024) | round(2) }} MB
 
       Contents:
-        - {{ _required_images | length }} Docker images
+        - {{ _required_images | length }} container images
         - Ansible collection: {{ k8s_tutum_offline_collection_name }}
         - Installation scripts
         - Sample inventory
 
       Configuration:
+        - Container runtime: {{ k8s_tutum_offline_container_runtime }}
         - Database mode: {{ k8s_tutum_offline_db_mode }}
         - Injection mode: {{ k8s_tutum_offline_injection_mode }}
       {{ '  - Internal registry: ' ~ k8s_tutum_offline_internal_registry if k8s_tutum_offline_internal_registry else '' }}

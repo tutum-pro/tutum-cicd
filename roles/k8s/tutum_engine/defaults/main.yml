@@ -10,6 +10,17 @@ k8s_tutum_engine_version: "5.1.5"
 # Namespace
 k8s_tutum_namespace: "tutum-system"
 
+# ==================== Kubectl Configuration ====================
+# Kubectl command (inherits from k8s_kubectl_command if set, otherwise auto-detects)
+k8s_kubectl_command: "{{ k8s_kubectl_command | default('kubectl') }}"
+
+# KUBECONFIG path (optional)
+k8s_kubectl_kubeconfig: "{{ k8s_kubectl_kubeconfig | default('') }}"
+
+# Full kubectl command with env vars
+k8s_kubectl: >-
+  {{ 'KUBECONFIG=' + k8s_kubectl_kubeconfig + ' ' if k8s_kubectl_kubeconfig | length > 0 else '' }}{{ k8s_kubectl_command }}
+
 # Deployment configuration
 k8s_tutum_engine_replicas: 1
 k8s_tutum_engine_image: "tutumpro/tutum-engine"

@@ -39,6 +39,37 @@ k8s_tutum_namespace: "tutum-system"
 # Options: "standard", "microk8s", "k3s", "rke2", "openshift"
 k8s_tutum_init_distribution: "standard"
 
+# ==================== Kubectl Configuration ====================
+
+# Kubectl command wrapper (auto-selected based on distribution)
+# - OpenShift: "oc" (OpenShift CLI, backwards compatible with kubectl)
+# - MicroK8s: "microk8s kubectl" (MicroK8s wrapper)
+# - k3s: "k3s kubectl" (k3s wrapper)
+# - RKE2: "kubectl" (standard kubectl, but may need custom KUBECONFIG)
+# - Standard: "kubectl" (standard kubectl)
+#
+# You can override with full path if binary is not in PATH:
+# k8s_kubectl_command: "/usr/local/bin/kubectl"
+k8s_kubectl_command: >-
+  {{ 'oc' if k8s_tutum_init_distribution == 'openshift'
+     else 'microk8s kubectl' if k8s_tutum_init_distribution == 'microk8s'
+     else 'k3s kubectl' if k8s_tutum_init_distribution == 'k3s'
+     else 'kubectl' }}
+
+# Path to kubectl binary (optional, leave empty for PATH lookup)
+# Useful when kubectl/oc is installed in non-standard location
+# Example: "/opt/k8s/bin/kubectl" or "/usr/local/bin/oc"
+k8s_kubectl_bin_path: ""
+
+# KUBECONFIG file path (optional, leave empty to use default ~/.kube/config)
+# Required for:
+# - RKE2: /etc/rancher/rke2/rke2.yaml
+# - k3s: /etc/rancher/k3s/k3s.yaml
+# - Custom installations with non-default config location
+#
+# Example: "/etc/rancher/rke2/rke2.yaml"
+k8s_kubectl_kubeconfig: ""
+
 # Database mode: "embedded", "cnpg" or "external"
 # embedded: Deploys simple PostgreSQL in Kubernetes (tutum_postgres role)
 # cnpg: Deploys CloudNativePG cluster (tutum_cnpg role) - recommended for production
@@ -83,6 +114,11 @@ k8s_tutum_operator_sync_interval: "5m"
 # - "" (empty): watch all namespaces (cluster-wide)
 # - "ns1,ns2": watch only specific namespaces
 k8s_tutum_operator_watch_namespaces: ""
+# CRD installation control (useful when you lack cluster-admin permissions)
+# Set to true to skip automatic CRD installation and generate manifest for manual installation
+k8s_tutum_operator_skip_crd_install: false
+# Path where CRD manifest will be saved for manual installation by cluster admin
+k8s_tutum_operator_crd_manifest_path: "./tutum-operator-crd.yml"
 
 # Test operator deployment namespace
 # K8s namespace where tutum_test_operator will deploy test app and TutumCertificate CR

@@ -38,3 +38,12 @@ k8s_tutum_registry_secret_name: "tutum-registry-secret"
 
 # Action: present or absent
 k8s_tutum_operator_state: "present"
+
+# CRD installation control
+# Set to true to skip automatic CRD installation (useful when cluster-admin is required)
+# CRD manifest will still be generated at k8s_tutum_operator_crd_manifest_path
+k8s_tutum_operator_skip_crd_install: false
+
+# Path where CRD manifest will be saved for manual installation by cluster admin
+# Default: current directory
+k8s_tutum_operator_crd_manifest_path: "./tutum-operator-crd.yml"

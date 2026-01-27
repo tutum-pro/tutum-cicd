@@ -26,16 +26,44 @@ Unlike the CSI driver which requires privileged access for mount operations, the
 | `k8s_tutum_engine_url` | `tutum-engine.tutum-system.svc.cluster.local:9090` | Tutum Engine gRPC URL |
 | `k8s_tutum_operator_sync_interval` | `5m` | Default certificate sync interval |
 | `k8s_tutum_operator_log_level` | `info` | Log level (debug, info, warn, error) |
+| `k8s_tutum_operator_watch_namespaces` | `""` | Comma-separated namespaces to watch (empty = all) |
+| `k8s_tutum_operator_skip_crd_install` | `false` | Skip CRD installation (generate manifest only) |
+| `k8s_tutum_operator_crd_manifest_path` | `./tutum-operator-crd.yml` | Path for generated CRD manifest |
 | `k8s_tutum_operator_state` | `present` | Set to `absent` to uninstall |
 
 ## Usage
 
-### Install
+### Install (with cluster-admin permissions)
 
 ```yaml
 - hosts: k8s_controllers
   roles:
     - role: tutum_pro.cicd.k8s.tutum_operator
+```
+
+### Install without cluster-admin (OpenShift/Restricted environments)
+
+When you don't have cluster-admin permissions, you can:
+1. Generate CRD manifest for manual installation
+2. Install operator with namespace-scoped permissions
+
+```yaml
+- hosts: k8s_controllers
+  roles:
+    - role: tutum_pro.cicd.k8s.tutum_operator
+      k8s_tutum_operator_skip_crd_install: true
+      k8s_tutum_operator_crd_manifest_path: "./crd-for-admin.yml"
+      k8s_tutum_operator_watch_namespaces: "production,staging"
+```
+
+This will:
+- Generate CRD manifest at `./crd-for-admin.yml` (provide to cluster admin)
+- Install operator with Role/RoleBinding (namespace-scoped)
+- Configure operator to watch only specified namespaces
+
+**Admin must install CRD:**
+```bash
+kubectl apply -f crd-for-admin.yml
 ```
 
 ### Uninstall

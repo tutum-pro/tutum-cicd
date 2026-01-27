@@ -19,15 +19,33 @@
   changed_when: false
 
 # ==================== CRD ====================
-- name: Generate CRD manifest
+- name: Generate CRD manifest for manual installation
+  ansible.builtin.template:
+    src: crd.yml.j2
+    dest: "{{ k8s_tutum_operator_crd_manifest_path }}"
+    mode: '0644'
+  when: k8s_tutum_operator_skip_crd_install | bool
+
+- name: Display CRD manifest location (manual installation required)
+  ansible.builtin.debug:
+    msg:
+      - "CRD installation skipped (requires cluster-admin permissions)"
+      - "CRD manifest generated at: {{ k8s_tutum_operator_crd_manifest_path }}"
+      - "Please provide this file to your cluster administrator for installation:"
+      - "  kubectl apply -f {{ k8s_tutum_operator_crd_manifest_path }}"
+  when: k8s_tutum_operator_skip_crd_install | bool
+
+- name: Generate CRD manifest (temporary)
   ansible.builtin.template:
     src: crd.yml.j2
     dest: /tmp/tutum-operator-crd.yml
     mode: '0600'
+  when: not (k8s_tutum_operator_skip_crd_install | bool)
 
 - name: Apply CRD
   ansible.builtin.command: kubectl apply -f /tmp/tutum-operator-crd.yml
   changed_when: true
+  when: not (k8s_tutum_operator_skip_crd_install | bool)
 
 # ==================== RBAC ====================
 - name: Generate RBAC manifest
@@ -60,6 +78,7 @@
     - /tmp/tutum-operator-crd.yml
     - /tmp/tutum-operator-rbac.yml
     - /tmp/tutum-operator-deployment.yml
+  when: not (k8s_tutum_operator_skip_crd_install | bool)
 
 # ==================== Wait for Deployment ====================
 - name: Wait for Operator to be ready
@@ -72,6 +91,21 @@
 - name: Verify CRD is registered
   ansible.builtin.command: kubectl get crd tutumcertificates.tutum.io
   changed_when: false
+  when: not (k8s_tutum_operator_skip_crd_install | bool)
+  ignore_errors: true
+  register: _crd_check
+
+- name: Warning if CRD not found (manual installation required)
+  ansible.builtin.debug:
+    msg:
+      - "WARNING: CRD tutumcertificates.tutum.io not found!"
+      - "The operator will not function until CRD is installed by cluster admin."
+      - "Provide the generated manifest to your administrator:"
+      - "  {{ k8s_tutum_operator_crd_manifest_path }}"
+  when:
+    - k8s_tutum_operator_skip_crd_install | bool
+    - _crd_check is defined
+    - _crd_check.rc != 0
 
 - name: Get Operator status
   ansible.builtin.command: >

@@ -69,6 +69,22 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_init \
 | `k8s_tutum_namespace` | `tutum-system` | Kubernetes namespace |
 | `k8s_tutum_init_distribution` | `standard` | K8s distribution: `standard`, `microk8s`, `k3s`, `rke2`, `openshift` |
 
+### Kubectl Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_kubectl_command` | Auto-selected | Kubectl command wrapper (`kubectl`, `oc`, `microk8s kubectl`, `k3s kubectl`) |
+| `k8s_kubectl_bin_path` | `""` | Full path to kubectl binary (optional, for non-PATH locations) |
+| `k8s_kubectl_kubeconfig` | `""` | KUBECONFIG file path (optional, for k3s/RKE2: `/etc/rancher/*/k8s.yaml`) |
+
+**Note:** kubectl command is auto-selected based on `k8s_tutum_init_distribution`:
+- `openshift` → `oc`
+- `microk8s` → `microk8s kubectl`
+- `k3s` → `k3s kubectl`
+- `standard`/`rke2` → `kubectl`
+
+See [KUBECTL-WRAPPER-GUIDE.md](../../../KUBECTL-WRAPPER-GUIDE.md) for detailed configuration examples.
+
 ### Component Versions
 
 | Variable | Default | Description |

@@ -5,7 +5,7 @@ Prepares an offline installation bundle for air-gapped (disconnected) Tutum Plat
 ## Description
 
 This role creates a complete offline bundle containing:
-- All required Docker images (pulled, retagged, and saved as tar files)
+- All required container images (pulled, retagged, and saved as tar files)
 - Ansible collection with dependencies
 - Installation scripts (load-images.sh, push-images.sh, install-collection.sh)
 - Sample inventory pre-configured for internal registry
@@ -13,7 +13,9 @@ This role creates a complete offline bundle containing:
 
 ## Requirements
 
-- Docker must be installed and running
+- Container runtime: **Docker** or **Podman** (auto-selected based on platform)
+  - Podman is preferred for OpenShift/RHEL environments
+  - Docker for standard Kubernetes distributions
 - Internet access to pull images and download collections
 - Sufficient disk space (typically 1-3 GB depending on configuration)
 
@@ -26,6 +28,25 @@ This role creates a complete offline bundle containing:
 | `k8s_tutum_offline_output_path` | `./tutum-offline-bundle` | Output directory for bundle |
 | `k8s_tutum_offline_archive_name` | `tutum-offline-bundle` | Archive filename prefix |
 | `k8s_tutum_offline_archive_timestamp` | `true` | Add date timestamp to archive name |
+
+### Container Runtime
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `k8s_tutum_offline_container_runtime` | `docker` | Container runtime: `docker`, `podman`, or `auto` |
+
+**When to use Podman:**
+- OpenShift environments
+- RHEL, Oracle Linux, Fedora, Rocky Linux, AlmaLinux
+- Air-gapped corporate environments
+- Rootless container requirements
+
+**When to use Docker:**
+- Standard Kubernetes (EKS, AKS, GKE)
+- Ubuntu, Debian based systems
+- Development environments
+
+Use `auto` to automatically detect and prefer Podman if available.
 
 ### Component Selection
 
@@ -87,11 +108,28 @@ ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_offline_bundl
   -e k8s_tutum_offline_inventory_path=./inventory/k8s.ini
 ```
 
+### With Podman (RHEL/OpenShift)
+
+```bash
+ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_offline_bundle \
+  -e k8s_tutum_offline_output_path=./tutum-bundle \
+  -e k8s_tutum_offline_container_runtime=podman
+```
+
+### Auto-detect Container Runtime
+
+```bash
+ansible localhost -m include_role -a name=tutum_pro.cicd.k8s.tutum_offline_bundle \
+  -e k8s_tutum_offline_output_path=./tutum-bundle \
+  -e k8s_tutum_offline_container_runtime=auto
+```
+Auto-detection prefers Podman if available, falls back to Docker.
+
 ## Bundle Contents
 
 ```
 tutum-offline-bundle/
-├── images/                    # Docker images as tar files
+├── images/                    # Container images as tar files
 │   ├── engine.tar
 │   ├── cnpg-operator.tar     # (if db_mode=cnpg)
 │   ├── cnpg-postgres.tar     # (if db_mode=cnpg)
@@ -100,8 +138,8 @@ tutum-offline-bundle/
 │   ├── tutum_pro-cicd-*.tar.gz
 │   └── kubernetes-core-*.tar.gz
 ├── scripts/
-│   ├── load-images.sh       # Load images into Docker
-│   ├── push-images.sh       # Push to internal registry
+│   ├── load-images.sh       # Load images (supports Docker/Podman)
+│   ├── push-images.sh       # Push to internal registry (supports Docker/Podman)
 │   └── install-collection.sh
 ├── images-manifest.yml       # Image manifest
 ├── sample-inventory.ini      # Pre-configured inventory

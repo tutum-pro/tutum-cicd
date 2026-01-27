@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/version: "{{ k8s_tutum_operator_version }}"
     app.kubernetes.io/managed-by: ansible
 ---
+{% if k8s_tutum_operator_watch_namespaces == "" %}
+# Cluster-wide mode (watch all namespaces)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -94,3 +96,96 @@ subjects:
   - kind: ServiceAccount
     name: tutum-operator
     namespace: {{ k8s_tutum_namespace }}
+{% else %}
+# Namespace-scoped mode (watch specific namespaces)
+{% for ns in k8s_tutum_operator_watch_namespaces.split(',') %}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tutum-operator-role
+  namespace: {{ ns | trim }}
+  labels:
+    app.kubernetes.io/name: tutum-operator
+    app.kubernetes.io/version: "{{ k8s_tutum_operator_version }}"
+    app.kubernetes.io/managed-by: ansible
+rules:
+  # TutumCertificate resources
+  - apiGroups:
+      - tutum.io
+    resources:
+      - tutumcertificates
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+  - apiGroups:
+      - tutum.io
+    resources:
+      - tutumcertificates/status
+    verbs:
+      - get
+      - update
+      - patch
+  - apiGroups:
+      - tutum.io
+    resources:
+      - tutumcertificates/finalizers
+    verbs:
+      - update
+  # Secrets management
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  # Events for status reporting
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  # Leader election (in operator namespace)
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tutum-operator-binding
+  namespace: {{ ns | trim }}
+  labels:
+    app.kubernetes.io/name: tutum-operator
+    app.kubernetes.io/version: "{{ k8s_tutum_operator_version }}"
+    app.kubernetes.io/managed-by: ansible
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tutum-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: tutum-operator
+    namespace: {{ k8s_tutum_namespace }}
+{% endfor %}
+{% endif %}

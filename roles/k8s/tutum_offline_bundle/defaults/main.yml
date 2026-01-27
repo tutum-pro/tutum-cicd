@@ -2,6 +2,26 @@
 # k8s_tutum_offline_bundle role defaults
 # Prepare offline bundle for air-gapped/on-prem Tutum Platform installation
 
+# ==================== Container Runtime ====================
+
+# Container runtime to use: docker or podman
+#
+# Podman is commonly used in:
+# - OpenShift environments (always)
+# - RHEL, Oracle Linux, Fedora, Rocky Linux, AlmaLinux
+# - Air-gapped corporate environments
+# - Rootless container deployments
+#
+# Docker is commonly used in:
+# - Standard Kubernetes (upstream, EKS, AKS, GKE)
+# - Ubuntu, Debian based systems
+# - Development environments
+#
+# Both have compatible CLI interfaces.
+# Default: "docker" (most universal)
+# For OpenShift/RHEL: explicitly set to "podman"
+k8s_tutum_offline_container_runtime: "docker"
+
 # ==================== Output Configuration ====================
 
 # Output directory for the bundle

@@ -26,6 +26,13 @@ spec:
       imagePullSecrets:
         - name: {{ k8s_tutum_registry_secret_name }}
 {% endif %}
+{% if (k8s_distribution | default('standard')) == 'openshift' %}
+      # OpenShift PodSecurity Standards compliance
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+{% endif %}
       containers:
         - name: postgres
           image: {{ k8s_tutum_postgres_image }}:{{ k8s_tutum_postgres_version }}
@@ -44,6 +51,17 @@ spec:
             limits:
               cpu: {{ k8s_tutum_postgres_resources.limits.cpu }}
               memory: {{ k8s_tutum_postgres_resources.limits.memory }}
+{% if (k8s_distribution | default('standard')) == 'openshift' %}
+          # OpenShift PodSecurity Standards compliance
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+{% endif %}
           volumeMounts:
             - name: postgres-data
 {% if k8s_tutum_postgres_image_type == 'openshift' %}

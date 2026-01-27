@@ -3,6 +3,19 @@
 Ansible collection for deploying Tutum Pro certificate management platform.
 
 **Collection:** `tutum_pro.cicd`
+**Latest Version:** 1.8.9 (2026-01-27)
+
+## What's New in 1.8.9 🎉
+
+**Enhanced OpenShift & Enterprise Kubernetes Support**
+
+- ✅ **OpenShift PostgreSQL Support** - Automatic selection of OpenShift-compatible PostgreSQL images (`quay.io/sclorg/postgresql-16-c9s`) with proper environment variables and volume paths
+- ✅ **Podman Support** - Full support for Podman container runtime in offline bundle creation (essential for RHEL, Oracle Linux, and air-gapped environments)
+- ✅ **Kubectl Wrapper Support** - Native support for `oc` (OpenShift), `microk8s kubectl`, `k3s kubectl`, and custom wrappers with KUBECONFIG handling
+- ✅ **Manual CRD Installation** - Deploy tutum-operator without cluster-admin permissions in restricted environments
+- ✅ **Webhook Integration** - Real-time certificate change notifications from tutum-engine to tutum-operator
+
+See [RELEASE-1.8.9.md](RELEASE-1.8.9.md) for complete details.
 
 ## Installation
 
@@ -217,9 +230,23 @@ ansible-playbook playbooks/install-tutum-k8s.yml \
   -e k8s_tutum_postgres_host=192.168.1.100 \
   -e k8s_tutum_postgres_password=secure-password
 
-# For MicroK8s
+# OpenShift with embedded PostgreSQL (v1.8.9+)
+ansible-playbook playbooks/install-tutum-k8s.yml \
+  -e k8s_distribution=openshift \
+  -e k8s_kubectl_command=oc \
+  -e k8s_tutum_db_mode=embedded
+
+# MicroK8s
 ansible-playbook playbooks/install-tutum-k8s.yml \
   -e k8s_distribution=microk8s \
+  -e 'k8s_kubectl_command="microk8s kubectl"' \
+  -e k8s_tutum_postgres_host=192.168.1.100
+
+# k3s with custom KUBECONFIG
+ansible-playbook playbooks/install-tutum-k8s.yml \
+  -e k8s_distribution=k3s \
+  -e 'k8s_kubectl_command="k3s kubectl"' \
+  -e k8s_kubectl_kubeconfig=/etc/rancher/k3s/k3s.yaml \
   -e k8s_tutum_postgres_host=192.168.1.100
 
 # Uninstall from Kubernetes

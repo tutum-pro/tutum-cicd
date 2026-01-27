@@ -239,7 +239,10 @@ k8s_tutum_operator_resources:
 
 # ==================== Ingress Configuration ====================
 
-k8s_tutum_engine_ingress_class_name: "nginx"
+# Ingress class name - auto-selected based on Kubernetes distribution
+# OpenShift: nginx (recommended for corporate environments)
+# Standard/microk8s: nginx or "public" for microk8s default
+k8s_tutum_engine_ingress_class_name: "{{ 'nginx' if k8s_distribution == 'openshift' else 'nginx' }}"
 k8s_tutum_engine_ingress_host: ""
 k8s_tutum_engine_ingress_path: "/api"
 k8s_tutum_engine_ingress_path_type: "Prefix"
@@ -250,16 +253,6 @@ k8s_tutum_engine_ingress_grpc_host: ""
 k8s_tutum_engine_ingress_annotations:
   nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   nginx.ingress.kubernetes.io/ssl-redirect: "false"
-
-# ==================== OpenShift Route Configuration ====================
-
-k8s_tutum_engine_route_host: ""
-k8s_tutum_engine_route_path: "/api"
-k8s_tutum_engine_route_termination: "edge"
-k8s_tutum_engine_route_insecure_edge_termination_policy: "Redirect"
-k8s_tutum_engine_route_tls_certificate: ""
-k8s_tutum_engine_route_tls_key: ""
-k8s_tutum_engine_route_tls_ca_certificate: ""
 
 # ==================== Image Registry Credentials ====================
 

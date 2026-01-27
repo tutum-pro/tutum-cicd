@@ -282,7 +282,7 @@
     mode: '0644'
     force: "{{ k8s_tutum_manifests_overwrite | bool }}"
 
-# ==================== Generate Ingress/Route ====================
+# ==================== Generate Ingress ====================
 
 - name: Generate Ingress manifest
   ansible.builtin.template:
@@ -292,16 +292,6 @@
     force: "{{ k8s_tutum_manifests_overwrite | bool }}"
   when:
     - k8s_tutum_manifests_ingress_enabled | bool
-
-- name: Generate Route manifest (OpenShift)
-  ansible.builtin.template:
-    src: engine/route.yml.j2
-    dest: "{{ k8s_tutum_manifests_output_path }}/26-engine-route.yml"
-    mode: '0644'
-    force: "{{ k8s_tutum_manifests_overwrite | bool }}"
-  when:
-    - k8s_tutum_manifests_ingress_enabled | bool
-    - k8s_distribution == 'openshift'
 
 # ==================== Generate CSI Driver Manifests ====================
 

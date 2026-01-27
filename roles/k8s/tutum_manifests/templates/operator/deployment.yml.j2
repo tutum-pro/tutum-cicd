@@ -18,6 +18,10 @@ spec:
       labels:
         app.kubernetes.io/name: tutum-operator
         app.kubernetes.io/version: "{{ k8s_tutum_operator_version }}"
+{% if k8s_distribution == 'openshift' %}
+      annotations:
+        openshift.io/required-scc: restricted-v2
+{% endif %}
     spec:
       serviceAccountName: tutum-operator
 {% if k8s_tutum_registry_url | default('') | length > 0 %}

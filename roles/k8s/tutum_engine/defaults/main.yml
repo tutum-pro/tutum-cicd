@@ -43,7 +43,10 @@ k8s_tutum_engine_metrics_port: 9091
 
 # Ingress configuration
 k8s_tutum_engine_ingress_enabled: false
-k8s_tutum_engine_ingress_class_name: "nginx"  # or "public" for microk8s
+# Ingress class name - auto-selected based on Kubernetes distribution
+# OpenShift: nginx (recommended for corporate environments)
+# Standard/microk8s: nginx or "public" for microk8s default
+k8s_tutum_engine_ingress_class_name: "{{ 'nginx' if (k8s_distribution | default('standard')) == 'openshift' else 'nginx' }}"
 k8s_tutum_engine_ingress_host: ""  # e.g., "tutum.example.com" (empty = no host-based routing)
 k8s_tutum_engine_ingress_path: "/api"
 k8s_tutum_engine_ingress_path_type: "Prefix"
@@ -56,16 +59,6 @@ k8s_tutum_engine_ingress_annotations:
   nginx.ingress.kubernetes.io/ssl-redirect: "false"
 # For cert-manager, add:
 #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
-
-# OpenShift Route configuration (only for k8s_distribution=openshift)
-k8s_tutum_engine_route_enabled: false
-k8s_tutum_engine_route_host: ""  # e.g., "tutum.apps.example.com" (empty = auto-generated)
-k8s_tutum_engine_route_path: "/api"
-k8s_tutum_engine_route_termination: "edge"  # edge, passthrough, reencrypt
-k8s_tutum_engine_route_insecure_edge_termination_policy: "Redirect"  # Allow, Redirect, None
-k8s_tutum_engine_route_tls_certificate: ""  # Custom certificate (optional)
-k8s_tutum_engine_route_tls_key: ""  # Custom key (optional)
-k8s_tutum_engine_route_tls_ca_certificate: ""  # Custom CA (optional)
 
 # PostgreSQL connection
 # If k8s_tutum_external_db_url is set, external PostgreSQL will be used

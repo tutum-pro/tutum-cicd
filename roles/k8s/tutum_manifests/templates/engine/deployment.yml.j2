@@ -30,6 +30,9 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ k8s_tutum_engine_metrics_port }}"
         prometheus.io/path: "/metrics"
+{% if k8s_distribution == 'openshift' %}
+        openshift.io/required-scc: restricted-v2
+{% endif %}
     spec:
       serviceAccountName: tutum-engine
 {% if k8s_tutum_registry_url | default('') | length > 0 %}

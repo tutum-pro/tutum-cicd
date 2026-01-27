@@ -53,7 +53,10 @@ k8s_distribution: "standard"
 k8s_tutum_engine_version: "5.1.5"
 k8s_tutum_csi_version: "4.0.1"
 k8s_tutum_operator_version: "0.1.12"
-k8s_tutum_postgres_version: "15-alpine"
+# PostgreSQL version/tag - auto-selected based on distribution
+# OpenShift: uses 'latest' tag (version 16 is in image name)
+# Standard: uses '15-alpine' tag
+k8s_tutum_postgres_version: "{{ 'latest' if k8s_distribution == 'openshift' else '15-alpine' }}"
 k8s_tutum_cnpg_operator_version: "1.25.0"
 k8s_tutum_cnpg_postgres_version: "16"
 
@@ -120,9 +123,12 @@ k8s_tutum_postgres_replicas: 1
 # Image type: "standard" or "openshift"
 # - standard: Official postgres image (uses POSTGRES_* env vars)
 # - openshift: OpenShift/sclorg image (uses POSTGRESQL_* env vars)
-# Auto-detected based on image name
+# Auto-detected based on:
+#   1. k8s_distribution (if openshift -> use openshift type)
+#   2. Image name patterns (sclorg, rhscl, centos)
 k8s_tutum_postgres_image_type: >-
-  {{ 'openshift' if ('sclorg' in k8s_tutum_postgres_image or
+  {{ 'openshift' if (k8s_distribution == 'openshift' or
+     'sclorg' in k8s_tutum_postgres_image or
      'rhscl' in k8s_tutum_postgres_image or
      'centos/postgresql' in k8s_tutum_postgres_image)
      else 'standard' }}

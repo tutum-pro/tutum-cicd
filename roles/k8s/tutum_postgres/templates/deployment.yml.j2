@@ -46,8 +46,12 @@ spec:
               memory: {{ k8s_tutum_postgres_resources.limits.memory }}
           volumeMounts:
             - name: postgres-data
+{% if k8s_tutum_postgres_image_type == 'openshift' %}
+              mountPath: /var/lib/pgsql/data
+{% else %}
               mountPath: /var/lib/postgresql/data
               subPath: pgdata
+{% endif %}
           livenessProbe:
             exec:
               command:
@@ -68,7 +72,11 @@ spec:
                 - {{ k8s_tutum_db_user }}
                 - -d
                 - {{ k8s_tutum_db_name }}
+{% if k8s_tutum_postgres_image_type == 'openshift' %}
+            initialDelaySeconds: 15
+{% else %}
             initialDelaySeconds: 5
+{% endif %}
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3

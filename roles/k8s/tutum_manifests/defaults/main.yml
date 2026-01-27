@@ -110,9 +110,22 @@ k8s_tutum_jwt_secret: "{{ lookup('password', '/dev/null chars=ascii_letters,digi
 
 # ==================== Embedded PostgreSQL (db_mode=embedded) ====================
 
-k8s_tutum_postgres_image: "postgres"
+# PostgreSQL image - auto-selected based on Kubernetes distribution
+# OpenShift: uses quay.io/sclorg/postgresql-16-c9s (supports arbitrary UID)
+# Standard: uses postgres:15-alpine (official image)
+k8s_tutum_postgres_image: "{{ 'quay.io/sclorg/postgresql-16-c9s' if k8s_distribution == 'openshift' else 'postgres' }}"
 k8s_tutum_postgres_image_pull_policy: "IfNotPresent"
 k8s_tutum_postgres_replicas: 1
+
+# Image type: "standard" or "openshift"
+# - standard: Official postgres image (uses POSTGRES_* env vars)
+# - openshift: OpenShift/sclorg image (uses POSTGRESQL_* env vars)
+# Auto-detected based on image name
+k8s_tutum_postgres_image_type: >-
+  {{ 'openshift' if ('sclorg' in k8s_tutum_postgres_image or
+     'rhscl' in k8s_tutum_postgres_image or
+     'centos/postgresql' in k8s_tutum_postgres_image)
+     else 'standard' }}
 k8s_tutum_postgres_storage_class: ""
 k8s_tutum_postgres_storage_size: "5Gi"
 k8s_tutum_postgres_service_type: "ClusterIP"
